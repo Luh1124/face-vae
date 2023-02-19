@@ -258,7 +258,7 @@ class GeneratorFull(nn.Module):
             "L": KeypointPriorLoss(),
             "H": HeadPoseLoss(),
             "D": DeformationPriorLoss(),
-            "C": ContrastiveLoss(mode="non-direction").cuda(),
+            "C": torch.nn.SyncBatchNorm.convert_sync_batchnorm(ContrastiveLoss(mode="non-direction")).cuda(),
             "K": KLDivergenceLoss(),
             "R": ReconLoss()
         }
