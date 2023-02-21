@@ -1,0 +1,1 @@
+python train.py --batch_size=8 --gpu_ids=0,1,2,3 --ext=scale3_detach --root_dir="/home/lh/repo/datasets/vox-png"

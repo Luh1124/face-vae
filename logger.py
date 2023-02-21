@@ -72,7 +72,7 @@ class Logger:
     @master_only
     def log_scores(self):
         loss_mean = np.array(self.g_losses).mean(axis=0)
-        loss_mean[-2] = sum(np.array(self.g_losses)[:, -2]) / sum(np.array(self.g_losses)[:, -2] != 0)
+        # loss_mean[-2] = sum(np.array(self.g_losses)[:, -2]) / sum(np.array(self.g_losses)[:, -2] != 0)
         loss_string = "; ".join(["%s - %.5f" % (name, value) for name, value in zip(self.g_loss_names, loss_mean)])
         loss_string = "G" + str(self.epoch).zfill(self.zfill_num) + ") " + loss_string
         print(loss_string, file=self.log_file)

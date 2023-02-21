@@ -241,7 +241,7 @@ class DeformationPriorLoss(nn.Module):
 
 
 class ContrastiveLoss_linear(nn.Module):
-    def __init__(self, in_dim=512, hid_1_dim=512, out_1_dim=512, hid_2_dim=512, out_2_dim=512, mode="direction") -> None:
+    def __init__(self, in_dim=256, hid_1_dim=512, out_1_dim=512, hid_2_dim=512, out_2_dim=512, mode="direction") -> None:
         super(ContrastiveLoss_linear, self).__init__()
         self.criterion = nn.CosineSimilarity(dim=1)
         self.mode = mode
@@ -398,6 +398,6 @@ class ReconLoss(nn.Module):
         super(ReconLoss, self).__init__()
         self.mseloss = nn.MSELoss()
 
-    def forward(self, Rec):
-        loss = self.mseloss(Rec[0], Rec[1])
+    def forward(self, Rec1, Rec2):
+        loss = self.mseloss(Rec1, Rec2)
         return loss
