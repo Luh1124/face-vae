@@ -296,7 +296,7 @@ class GeneratorFull(nn.Module):
         kp_s, Rs = transform_kp(kp_n_s, yaw_s, pitch_s, roll_s, t_s, scale_d, delta_s)
         kp_d, Rd = transform_kp(kp_n_d, yaw_d, pitch_d, roll_d, t_d, scale_d, delta_d)
         # 关注一致性loss
-        transformed_kp, _ = transform_kp(kp_n_d, yaw_tran, pitch_tran, roll_tran, t_tran, scale_d, delta_transformed)
+        transformed_kp, _ = transform_kp(kp_n_tran, yaw_tran, pitch_tran, roll_tran, t_tran, scale_tran, delta_transformed)
 
 
         reverse_kp = transform.warp_coordinates(transformed_kp[:, :, :2])
