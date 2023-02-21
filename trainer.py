@@ -320,7 +320,6 @@ class GeneratorFull(nn.Module):
             # "K": torch.Tensor([0.0]).cuda() if x_kl_d[0] is None else self.weights["K"] * (self.losses["K"](x_kl_d)),
             # # "R": torch.Tensor([0.0]).cuda() if x_l2_d[0] is None else self.weights["R"] * (self.losses["R"](x_l2_d) + self.losses["R"](x_l2_s)),  
             # "R": torch.Tensor([0.0]).cuda() if x_l2_d[0] is None else self.weights["R"] * (self.losses["R"]((d,generated_d)))
-
         }
         return loss, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask
 
