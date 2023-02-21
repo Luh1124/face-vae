@@ -288,15 +288,15 @@ class GeneratorFull(nn.Module):
         
         kp_n_s, kp_n_d, kp_n_tran = kp_c_s/scale_s, kp_c_d/scale_d, kp_c_tran/scale_tran
         
-        delta_s, x_c_s, x_a_c_s, _, _ = self.efe(s, s_a, kp_n_s)
-        delta_d, x_c_d, x_a_c_d, _, _ = self.efe(d, d_a, kp_n_d)
+        delta_s, x_c_s, x_a_c_s, _, _ = self.efe(s, s_a, kp_c_s)
+        delta_d, x_c_d, x_a_c_d, _, _ = self.efe(d, d_a, kp_c_d)
 
-        delta_transformed, _, _, _, _ = self.efe(transformed_d, None, kp_n_tran)
+        delta_transformed, _, _, _, _ = self.efe(transformed_d, None, kp_c_tran)
         
-        kp_s, Rs = transform_kp(kp_n_s, yaw_s, pitch_s, roll_s, t_s, scale_d, delta_s)
-        kp_d, Rd = transform_kp(kp_n_d, yaw_d, pitch_d, roll_d, t_d, scale_d, delta_d)
+        kp_s, Rs = transform_kp(kp_n_s*scale_d, yaw_s, pitch_s, roll_s, t_s, delta_s/scale_s*scale_d)
+        kp_d, Rd = transform_kp(kp_c_d, yaw_d, pitch_d, roll_d, t_d, delta_d)
         # 关注一致性loss
-        transformed_kp, _ = transform_kp(kp_n_d, yaw_tran, pitch_tran, roll_tran, t_tran, scale_d, delta_transformed)
+        transformed_kp, _ = transform_kp(kp_c_tran, yaw_tran, pitch_tran, roll_tran, t_tran, delta_transformed)
 
 
         reverse_kp = transform.warp_coordinates(transformed_kp[:, :, :2])
