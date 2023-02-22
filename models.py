@@ -728,7 +728,7 @@ class EFE_conv5(nn.Module):
     #                 up_seq=[1024, 512, 256, 128, 64, 32], 
     #                 mix_seq = [30, 15],
     #                 D=16, K=15, n_res=3, scale_factor=0.25) -> None:
-    def __init__(self, use_weight_norm=False, down_seq=[3, 32, 64, 128, 256, 32], 
+    def __init__(self, use_weight_norm=False, down_seq=[3, 32, 64, 128, 256, 16], 
                     up_seq=[256, 256, 128, 64, 32, 32],
                     # mix_seq = [30, 15],
                     # contra_seq = [256, 512, 1024, 2048],
@@ -747,7 +747,7 @@ class EFE_conv5(nn.Module):
     # [N,20,3] (key points)
         super().__init__()
         self.down = nn.Sequential(*[SameBlock2D(down_seq[i], down_seq[i + 1], use_weight_norm) if i==0 else DownBlock2D(down_seq[i], down_seq[i + 1], use_weight_norm) for i in range(len(down_seq) - 1)])
-        self.mid_conv = nn.Conv2d(down_seq[-1] // 2, up_seq[0] * D, 1, 1, 0)
+        self.mid_conv = nn.Conv2d(down_seq[-1], up_seq[0] * D, 1, 1, 0)
         self.up = nn.Sequential(*[SameBlock3D(up_seq[i], up_seq[i + 1], use_weight_norm) if i==(len(up_seq)-2) else UpBlock3D(up_seq[i], up_seq[i + 1], use_weight_norm) for i in range(len(up_seq) - 1)])
         self.out_conv = nn.Conv3d(up_seq[-1], K, 3, 1, 1)
         # self.out_conv = nn.Conv3d(up_seq[-1], K, 7, 1, 3)
@@ -755,10 +755,10 @@ class EFE_conv5(nn.Module):
         self.mix_out = SameBlock3D(2*K, K, use_weight_norm)
         self.C, self.D = up_seq[0], D
         self.scale_factor = scale_factor
-        if use_vae:
-            self.vae = flatten_vae_nl()
-        else: 
-            self.vae = None
+        # if use_vae:
+        #     self.vae = flatten_vae_nl()
+        # else: 
+        #     self.vae = None
         
     def forward(self, x, x_a=None, kpc=None, train_vae=None):
         x = F.interpolate(x, mode="bilinear", scale_factor=self.scale_factor, align_corners=False, recompute_scale_factor=True)
@@ -772,22 +772,23 @@ class EFE_conv5(nn.Module):
             x_c = None
             x_a_c = None
         
-        if self.vae is not None:
-            x_vae = x
-            x_mu, x_logstd, x_hat = self.vae(x_vae, train_vae)
-            x_z = x_hat
-        else:
-            x_mu = None
-            x_logstd = None
-            x_hat = None
-            x_vae = None
+        # if self.vae is not None:
+        #     x_vae = x
+        #     x_mu, x_logstd, x_hat = self.vae(x_vae, train_vae)
+        #     x_z = x_hat
+        # else:
+        #     x_mu = None
+        #     x_logstd = None
+        #     x_hat = None
+        #     x_vae = None
 
         x = self.mid_conv(x_z)
         N, _, H, W = x.shape
         x = x.view(N, self.C, self.D, H, W)
         x = self.up(x)
         x = self.out_conv(x) # [N K 16 64 64]
-        xc = kp2gaussian_3d(kpc, spatial_size=x.shape[2:])
+        kpc_d = kpc.detach()
+        xc = kp2gaussian_3d(kpc_d, spatial_size=x.shape[2:])
         x = torch.cat((x, xc), dim=1)
         x = self.mix(x)
         x = self.mix_out(x)
@@ -796,7 +797,8 @@ class EFE_conv5(nn.Module):
         # res kpc
         # kp = 0.3*heatmap2kp(heatmap) + kpc
         kp = heatmap2kp(heatmap)
-        return kp, x_c, x_a_c, (x_mu, x_logstd), (x_vae, x_hat)
+        kp = kp - kpc_d + kpc
+        return kp, x_c, x_a_c, _, _
 
 
 class flatten_vae6(nn.Module):
@@ -1008,7 +1010,7 @@ class HPE_EDE(nn.Module):
         self.fc_yaw = nn.Linear(n_filters[-1], n_bins)
         self.fc_pitch = nn.Linear(n_filters[-1], n_bins)
         self.fc_roll = nn.Linear(n_filters[-1], n_bins)
-        self.fc_t = nn.Linear(n_filters[-1], 3)
+        self.fc_t = nn.Linear(n_filters[-1], 2)
         self.fc_scale = nn.Linear(n_filters[-1], 1)
         self.n_bins = n_bins
         self.idx_tensor = torch.FloatTensor(list(range(self.n_bins))).unsqueeze(0).cuda()
@@ -1033,7 +1035,9 @@ class HPE_EDE(nn.Module):
         yaw = (yaw - self.n_bins // 2) * 3 * np.pi / 180
         pitch = (pitch - self.n_bins // 2) * 3 * np.pi / 180
         roll = (roll - self.n_bins // 2) * 3 * np.pi / 180
-        scale = scale.view(x.shape[0], 1, 1, 1)
+        z_vec = torch.zeros((t.shape[0], 1)).to(t.device)
+        t = torch.cat((t, z_vec),dim=-1)
+        scale = scale.view(x.shape[0], 1, 1)
         return yaw, pitch, roll, t, scale
 
 

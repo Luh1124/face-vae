@@ -28,9 +28,9 @@ if __name__ == "__main__":
     def str2bool(s):
         return s.lower().startswith("t")
 
-    parser.add_argument("--batch_size", default=8, type=int, help="Batch size per GPU")
+    parser.add_argument("--batch_size", default=2, type=int, help="Batch size per GPU")
     parser.add_argument("--benchmark", type=str2bool, default=True, help="Turn on CUDNN benchmarking")
-    parser.add_argument("--gpu_ids", default=[0,1,2], type=eval, help="IDs of GPUs to use")
+    parser.add_argument("--gpu_ids", default=[0,1], type=eval, help="IDs of GPUs to use")
     parser.add_argument("--lr", default=0.00005, type=float, help="Learning rate")
     parser.add_argument("--num_epochs", default=150, type=int, help="Number of epochs to train")
     parser.add_argument("--num_workers", default=8, type=int, help="Number of data loader threads")
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     parser.add_argument("--vis_dir", type=str, default="vis_1644_", help="Visualization dir")
     parser.add_argument("--ckp", type=int, default=0, help="Checkpoint epoch")
     parser.add_argument("--log_file", type=str, default="log_1644_.txt", help="log file")
-    parser.add_argument("--ext", type=str, default="add", help="extension")
+    parser.add_argument("--ext", type=str, default="2-2", help="extension")
     parser.add_argument("--root_dir", type=str, default="/home/lh/repo/datasets/face-video-preprocessing/vox-png", help="data_path")
 
 
