@@ -1,1 +1,1 @@
-python train.py --ext=2-3 --root_dir="../datasets/vox-png" --gpu_ids=0,1,2,3,4,5,6,7 --batch_size=3
+python train.py --ext=2-3 --root_dir="../dataset/vox-png" --gpu_ids=0,1,2,3,4,5,6,7 --batch_size=3
