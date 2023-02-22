@@ -29,7 +29,7 @@ class Logger:
         dataloader,
         lr,
         checkpoint_freq=1,
-        visualizer_params={"kp_size": 5, "draw_border": True, "colormap": "gist_rainbow", "writer_use": True, "writer_name":'running'},
+        visualizer_params={"kp_size": 5, "draw_border": True, "colormap": "gist_rainbow", "writer_use": False, "writer_name":'running'},
         zfill_num=8,
         log_file_name="log_1644_final.txt",
     ):
