@@ -787,7 +787,8 @@ class EFE_conv5(nn.Module):
         x = x.view(N, self.C, self.D, H, W)
         x = self.up(x)
         x = self.out_conv(x) # [N K 16 64 64]
-        kpc_d = kpc.detach()
+        # kpc_d = kpc.detach()
+        kpc_d = kpc
         xc = kp2gaussian_3d(kpc_d, spatial_size=x.shape[2:])
         x = torch.cat((x, xc), dim=1)
         x = self.mix(x)
@@ -797,7 +798,7 @@ class EFE_conv5(nn.Module):
         # res kpc
         # kp = 0.3*heatmap2kp(heatmap) + kpc
         kp = heatmap2kp(heatmap)
-        kp = kp - kpc_d + kpc
+        # kp = kp - kpc_d + kpc
         return kp, x_c, x_a_c, _, _
 
 
