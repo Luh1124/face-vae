@@ -797,8 +797,8 @@ class EFE_conv5(nn.Module):
         # res kpc
         # kp = 0.3*heatmap2kp(heatmap) + kpc
         kp = heatmap2kp(heatmap)
-        kp = kp - kpc_d + kpc
-        return kp, x_c, x_a_c, _, _
+        delta = kp - kpc_d
+        return delta, x_c, x_a_c, _, _
 
 
 class flatten_vae6(nn.Module):

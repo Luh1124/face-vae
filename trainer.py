@@ -246,7 +246,7 @@ class GeneratorFull(nn.Module):
             "H": 20,
             "D": 0.5,
             "C": 10,
-            # "I": 0 # 10
+            "I": 2 # 10
         }
         self.losses = {
             "P": PerceptualLoss(),
@@ -257,7 +257,7 @@ class GeneratorFull(nn.Module):
             "H": HeadPoseLoss(),
             "D": DeformationPriorLoss(),
             "C": torch.nn.SyncBatchNorm.convert_sync_batchnorm(ContrastiveLoss(mode="non-direction")).cuda(),
-            # "I": ReconLoss()
+            "I": ReconLoss()
         }
         # self.losses["C"] = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.losses["C"])
 
@@ -290,12 +290,14 @@ class GeneratorFull(nn.Module):
         
         transformed_kp_old, _ = transform_kp(kp_c_tran, yaw_tran, pitch_tran, roll_tran, t_tran)
 
-        kp_s, x_c_s, x_a_c_s, x_kl_s, x_l2_s = self.efe(s, s_a, kp_s_old, train_vae=False)
-        kp_d, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_d_old, train_vae=False)
-        kp_d_e, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_d_e_old, train_vae=False)
+        delta_s, x_c_s, x_a_c_s, x_kl_s, x_l2_s = self.efe(s, s_a, kp_s_old, train_vae=False)
+        delta_d, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_d_e_old, train_vae=False)
+        # delta_d_e, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_d_e_old, train_vae=False)
+        kp_s , kp_d = kp_s_old + delta_s, kp_d_old + delta_d
         
-        transformed_kp, _, _, _, _ = self.efe(transformed_d, None, transformed_kp_old)
-
+        delta_tran, _, _, _, _ = self.efe(transformed_d, None, transformed_kp_old)
+        transformed_kp = transformed_kp_old + delta_tran
+        
         reverse_kp = transform.warp_coordinates(transformed_kp[:, :, :2])
         deformation, occlusion, mask = self.mfe(fs, kp_s, kp_d, Rs, Rd)
         generated_d = self.generator(fs, deformation, occlusion)
@@ -305,12 +307,13 @@ class GeneratorFull(nn.Module):
             "P": self.weights["P"] * self.losses["P"](generated_d, d),
             "G": self.weights["G"] * self.losses["G"](output_gd, True, False),
             "F": self.weights["F"] * self.losses["F"](features_gd, features_d),
-            "E": self.weights["E"] * self.losses["E"](kp_d_e, reverse_kp),
+            "E": self.weights["E"] * self.losses["E"](kp_d, reverse_kp),
             "L": self.weights["L"] * self.losses["L"](kp_d),
             "H": self.weights["H"] * self.losses["H"](yaw, pitch, roll, real_yaw, real_pitch, real_roll),
             # "D": self.weights["D"] * self.losses["D"](delta_d),
             "D": self.weights["D"] * self.losses["D"](kp_d_old-kp_d),
             "C": torch.Tensor([0.0]).cuda() if x_c_d is None else self.weights["C"] * self.losses["C"](x_c_d, x_a_c_d),
+            "I": self.weights["I"] * self.losses["I"](kp_c_s/scale_s, kp_c_d/scale_d),
             # "K": torch.Tensor([0.0]).cuda() if x_kl_d[0] is None else self.weights["K"] * (self.losses["K"](x_kl_d, x_l2_d) + self.losses["K"](x_kl_s, x_l2_s)),
             # "K": torch.Tensor([0.0]).cuda() if x_kl_d[0] is None else self.weights["K"] * (self.losses["K"](x_kl_d) + self.losses["K"](x_kl_s)),
             # "K": torch.Tensor([0.0]).cuda() if x_kl_d[0] is None else self.weights["K"] * (self.losses["K"](x_kl_d)),
