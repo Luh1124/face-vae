@@ -794,7 +794,7 @@ class EFE_conv5(nn.Module):
         # x = torch.nn.functional.tanh(x)
         heatmap = out2heatmap(x)
         # res kpc
-        kp = 0.3*heatmap2kp(heatmap) + kpc
+        kp = 0.3 * heatmap2kp(heatmap) + kpc
         # kp = heatmap2kp(heatmap)
         return kp, x_c, x_a_c, (x_mu, x_logstd), (x_vae, x_hat)
 
