@@ -50,5 +50,5 @@ if __name__ == "__main__":
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_ids)[1:-1]
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "5678"
+    os.environ["MASTER_PORT"] = "2345"
     mp.spawn(main, nprocs=len(args.gpu_ids), args=(args,))
