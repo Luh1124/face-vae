@@ -729,7 +729,7 @@ class EFE_conv5(nn.Module):
     #                 mix_seq = [30, 15],
     #                 D=16, K=15, n_res=3, scale_factor=0.25) -> None:
     def __init__(self, use_weight_norm=False, down_seq=[3, 32, 64, 128, 256, 16], 
-                    up_seq=[256, 256, 128, 64, 32, 32],
+                    up_seq=[128, 128, 64, 64, 32, 16],
                     # mix_seq = [30, 15],
                     # contra_seq = [256, 512, 1024, 2048],
                     D=16, K=15, n_res=3, scale_factor=0.25, 
@@ -966,7 +966,7 @@ class CKD(nn.Module):
     # [N,20,16,256,256] (heatmap)
     # [N,20,3] (key points)
     def __init__(
-        self, use_weight_norm=False, down_seq=[3, 64, 128, 256, 512, 1024], up_seq=[1024, 512, 256, 128, 64, 32], D=16, K=15, scale_factor=0.25
+        self, use_weight_norm=False, down_seq=[3, 64, 128, 256, 512, 1024], up_seq=[512, 256, 128, 128, 64, 32], D=16, K=15, scale_factor=0.25
     ):
         super().__init__()
         self.down = nn.Sequential(*[DownBlock2D(down_seq[i], down_seq[i + 1], use_weight_norm) for i in range(len(down_seq) - 1)])
@@ -1054,7 +1054,7 @@ class MFE(nn.Module):
     # 2.
     # [N,2192,64,64]
     # [N,1,64,64] (occlusion)
-    def __init__(self, use_weight_norm=False, down_seq=[80, 64, 128, 256, 512, 1024], up_seq=[1024, 512, 256, 128, 64, 32], K=15, D=16, C1=32, C2=4):
+    def __init__(self, use_weight_norm=False, down_seq=[80, 64, 128, 128, 256, 512], up_seq=[512, 256, 128, 128, 64, 32], K=15, D=16, C1=32, C2=4):
         super().__init__()
         self.compress = nn.Conv3d(C1, C2, 1, 1, 0)
         self.down = nn.Sequential(*[DownBlock3D(down_seq[i], down_seq[i + 1], use_weight_norm) for i in range(len(down_seq) - 1)])

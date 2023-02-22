@@ -1,0 +1,1 @@
+python train.py --ext=2-2-s --root_dir="/home/lh/repo/datasets/face-video-preprocessing/vox-png" --gpu_ids=0,1 --batch_size=8
