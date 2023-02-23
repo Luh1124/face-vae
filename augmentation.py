@@ -353,6 +353,73 @@ class RandomPerspective(object):
         return out
 
 
+class RandomScale(object):
+
+
+    def __init__(self, pers_num, enlarge_num):
+        self.pers_num = pers_num
+        self.enlarge_num = enlarge_num
+
+    def __call__(self, clip):
+        """
+        Args:
+        img (PIL.Image or numpy.ndarray): List of videos to be cropped
+        in format (h, w, c) in numpy.ndarray
+        Returns:
+        PIL.Image or numpy.ndarray: Cropped list of videos
+        """
+        out = clip
+        for i in range(len(clip)):
+            self.pers_size = np.random.randint(20, self.pers_num) * pow(-1, np.random.randint(2))
+            self.enlarge_size = np.random.randint(20, self.enlarge_num) * pow(-1, np.random.randint(2))
+            h, w, c = clip[i].shape
+            crop_size=256
+            dst = np.array([
+                [-self.enlarge_size, -self.enlarge_size],
+                [-self.enlarge_size + self.pers_size, w + self.enlarge_size],
+                [h + self.enlarge_size, -self.enlarge_size],
+                [h + self.enlarge_size - self.pers_size, w + self.enlarge_size],], dtype=np.float32)
+            src = np.array([[-self.enlarge_size, -self.enlarge_size], [-self.enlarge_size, w + self.enlarge_size],
+                        [h + self.enlarge_size, -self.enlarge_size], [h + self.enlarge_size, w + self.enlarge_size]]).astype(np.float32())
+            M = cv2.getPerspectiveTransform(src, dst)
+            warped = cv2.warpPerspective(clip[i], M, (crop_size, crop_size), borderMode=cv2.BORDER_REPLICATE)
+            out[i] = warped
+
+        return out
+
+
+class RandomScale(object):
+    def __init__(self, pers_num, enlarge_num):
+        self.pers_num = pers_num
+        self.enlarge_num = enlarge_num
+
+    def __call__(self, clip):
+        """
+        Args:
+        img (PIL.Image or numpy.ndarray): List of videos to be cropped
+        in format (h, w, c) in numpy.ndarray
+        Returns:
+        PIL.Image or numpy.ndarray: Cropped list of videos
+        """
+        out = clip
+        for i in range(len(clip)):
+            self.pers_size = np.random.randint(20, self.pers_num) * pow(-1, np.random.randint(2))
+            self.enlarge_size = np.random.randint(20, self.enlarge_num) * pow(-1, np.random.randint(2))
+            h, w, c = clip[i].shape
+            crop_size=256
+            dst = np.array([
+                [-self.enlarge_size, -self.enlarge_size],
+                [-self.enlarge_size + self.pers_size, w + self.enlarge_size],
+                [h + self.enlarge_size, -self.enlarge_size],
+                [h + self.enlarge_size - self.pers_size, w + self.enlarge_size],], dtype=np.float32)
+            src = np.array([[-self.enlarge_size, -self.enlarge_size], [-self.enlarge_size, w + self.enlarge_size],
+                        [h + self.enlarge_size, -self.enlarge_size], [h + self.enlarge_size, w + self.enlarge_size]]).astype(np.float32())
+            M = cv2.getPerspectiveTransform(src, dst)
+            warped = cv2.warpPerspective(clip[i], M, (crop_size, crop_size), borderMode=cv2.BORDER_REPLICATE)
+            out[i] = warped
+
+        return out
+
 class GaussianBlur(object):
     """Gaussian blur augmentation in SimCLR https://arxiv.org/abs/2002.05709"""
 

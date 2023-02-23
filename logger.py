@@ -72,7 +72,7 @@ class Logger:
     @master_only
     def log_scores(self):
         loss_mean = np.array(self.g_losses).mean(axis=0)
-        loss_mean[-2] = sum(np.array(self.g_losses)[:, -2]) / sum(np.array(self.g_losses)[:, -2] != 0)
+        # loss_mean[-2] = sum(np.array(self.g_losses)[:, -2]) / sum(np.array(self.g_losses)[:, -2] != 0)
         loss_string = "; ".join(["%s - %.5f" % (name, value) for name, value in zip(self.g_loss_names, loss_mean)])
         loss_string = "G" + str(self.epoch).zfill(self.zfill_num) + ") " + loss_string
         print(loss_string, file=self.log_file)
@@ -136,8 +136,8 @@ class Logger:
         master_only_print("Epoch", self.epoch)
         with tqdm(total=len(self.dataloader)) as progress_bar:
             for idx, x in enumerate(self.dataloader):
-                # if idx > 4:
-                #     break
+                if idx > 1000:
+                    break
                 # s, d, s_a, d_a = x['source'], x['driving'],x['source_aug'],x['driving_aug']
                 s, d, s_a, d_a = x
                 
