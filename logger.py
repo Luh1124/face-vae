@@ -136,8 +136,8 @@ class Logger:
         master_only_print("Epoch", self.epoch)
         with tqdm(total=len(self.dataloader)) as progress_bar:
             for idx, x in enumerate(self.dataloader):
-                if idx > 8:
-                    break
+                # if idx > 400:
+                #     break
                 # s, d, s_a, d_a = x['source'], x['driving'],x['source_aug'],x['driving_aug']
                 s, d, s_a, d_a = x
                 
@@ -226,13 +226,18 @@ class Visualizer:
 
     def visualize(self, x, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask):
         images = []
-        s, d, _, _ = x
+        s, d, s_a, d_a = x
         # Source image with keypoints
         source = s.data.cpu()
         kp_source = kp_s.data.cpu().numpy()[:, :, :2]
         source = np.transpose(source, [0, 2, 3, 1])
         images.append((source, kp_source))
 
+        # Aug Driving with and without keypoints
+        driving_aug = d_a.data.cpu().numpy()
+        driving_aug = np.transpose(driving_aug, [0, 2, 3, 1])
+        images.append(driving_aug)
+        
         # Equivariance visualization
         transformed = transformed_d.data.cpu().numpy()
         transformed = np.transpose(transformed, [0, 2, 3, 1])
