@@ -17,7 +17,7 @@ from numpy import pad
 import warnings
 from skimage.transform import resize, rotate
 
-from skimage import img_as_ubyte, img_as_float
+from skimage import img_as_ubyte, img_as_float, img_as_float32
 
 def crop_clip(clip, min_h, min_w, h, w):
     if isinstance(clip[0], np.ndarray):
@@ -188,16 +188,17 @@ class RandomRotation(object):
         Returns:
         PIL.Image or numpy.ndarray: Cropped list of videos
         """
-        angle = random.uniform(self.degrees[0], self.degrees[1])
-        if isinstance(clip[0], np.ndarray):
-            rotated = [rotate(image=img, angle=angle, preserve_range=True) for img in clip]
-        elif isinstance(clip[0], PIL.Image.Image):
-            rotated = [img.rotate(angle) for img in clip]
-        else:
-            raise TypeError('Expected numpy.ndarray or PIL.Image' +
-                            'but got list of {0}'.format(type(clip[0])))
-
-        return rotated
+        out = clip
+        for i in range(len(clip)):
+            angle = random.uniform(self.degrees[0], self.degrees[1])
+            h, w, c = clip[i].shape
+            warped = cv2.warpAffine(src = clip[i],  # 原图像
+                                    # 仿射变换的旋转矩阵参数
+                                M = cv2.getRotationMatrix2D(center=(w // 2, h // 2), angle=angle, scale=1),  
+                                dsize = (w, h),   # 原尺寸大小（注意这里的顺序是相反的）
+                                borderMode=cv2.BORDER_REPLICATE)  # 填充值
+            out[i] = warped
+        return out
 
 class RandomFlip(object):
     def __init__(self, time_flip=False, horizontal_flip=False):
@@ -355,10 +356,8 @@ class RandomPerspective(object):
 
 class RandomScale(object):
 
-
-    def __init__(self, pers_num, enlarge_num):
-        self.pers_num = pers_num
-        self.enlarge_num = enlarge_num
+    def __init__(self, ratio = [0.7, 1.2]):
+        self.ratio = ratio
 
     def __call__(self, clip):
         """
@@ -370,52 +369,34 @@ class RandomScale(object):
         """
         out = clip
         for i in range(len(clip)):
-            self.pers_size = np.random.randint(20, self.pers_num) * pow(-1, np.random.randint(2))
-            self.enlarge_size = np.random.randint(20, self.enlarge_num) * pow(-1, np.random.randint(2))
+            scale_factor = np.random.uniform(self.ratio[0], self.ratio[1])
             h, w, c = clip[i].shape
-            crop_size=256
-            dst = np.array([
-                [-self.enlarge_size, -self.enlarge_size],
-                [-self.enlarge_size + self.pers_size, w + self.enlarge_size],
-                [h + self.enlarge_size, -self.enlarge_size],
-                [h + self.enlarge_size - self.pers_size, w + self.enlarge_size],], dtype=np.float32)
-            src = np.array([[-self.enlarge_size, -self.enlarge_size], [-self.enlarge_size, w + self.enlarge_size],
-                        [h + self.enlarge_size, -self.enlarge_size], [h + self.enlarge_size, w + self.enlarge_size]]).astype(np.float32())
-            M = cv2.getPerspectiveTransform(src, dst)
-            warped = cv2.warpPerspective(clip[i], M, (crop_size, crop_size), borderMode=cv2.BORDER_REPLICATE)
+            warped = cv2.warpAffine(src = clip[i],  # 原图像
+                                    # 仿射变换的旋转矩阵参数
+                                M = cv2.getRotationMatrix2D(center=(w // 2, h // 2), angle=0, scale=scale_factor),  
+                                dsize = (w, h),   # 原尺寸大小（注意这里的顺序是相反的）
+                                borderMode=cv2.BORDER_REPLICATE)  # 填充值
             out[i] = warped
-
         return out
 
 
-class RandomScale(object):
-    def __init__(self, pers_num, enlarge_num):
-        self.pers_num = pers_num
-        self.enlarge_num = enlarge_num
+class RandomTranslate(object):
+    def __init__(self, x_ratio=1/16., y_ratio=1/16.):
+        self.x_ratio = x_ratio
+        self.y_ratio = y_ratio
 
     def __call__(self, clip):
-        """
-        Args:
-        img (PIL.Image or numpy.ndarray): List of videos to be cropped
-        in format (h, w, c) in numpy.ndarray
-        Returns:
-        PIL.Image or numpy.ndarray: Cropped list of videos
-        """
+        h, w, c = clip[0].shape
+        x_delta, y_delta = int(self.x_ratio*w), int(self.y_ratio*h)
         out = clip
         for i in range(len(clip)):
-            self.pers_size = np.random.randint(20, self.pers_num) * pow(-1, np.random.randint(2))
-            self.enlarge_size = np.random.randint(20, self.enlarge_num) * pow(-1, np.random.randint(2))
-            h, w, c = clip[i].shape
-            crop_size=256
-            dst = np.array([
-                [-self.enlarge_size, -self.enlarge_size],
-                [-self.enlarge_size + self.pers_size, w + self.enlarge_size],
-                [h + self.enlarge_size, -self.enlarge_size],
-                [h + self.enlarge_size - self.pers_size, w + self.enlarge_size],], dtype=np.float32)
-            src = np.array([[-self.enlarge_size, -self.enlarge_size], [-self.enlarge_size, w + self.enlarge_size],
-                        [h + self.enlarge_size, -self.enlarge_size], [h + self.enlarge_size, w + self.enlarge_size]]).astype(np.float32())
-            M = cv2.getPerspectiveTransform(src, dst)
-            warped = cv2.warpPerspective(clip[i], M, (crop_size, crop_size), borderMode=cv2.BORDER_REPLICATE)
+            tx = np.random.randint(-1*x_delta, x_delta)
+            ty = np.random.randint(-1*y_delta, y_delta)
+            M = np.array([
+                [1, 0, tx],
+                [0, 1, ty]
+            ], dtype=np.float32)
+            warped = cv2.warpAffine(clip[i], M, dsize = (w, h), borderMode=cv2.BORDER_REPLICATE)
             out[i] = warped
 
         return out
@@ -450,7 +431,8 @@ class RandomGrayscale(object):
 
 class AllAugmentationTransform:
     def __init__(self, resize_param=None, rotation_param=None, perspective_param=None, 
-                 flip_param=None, crop_param=None, jitter_param=None, blur_param=None, gray_param=None):
+                 flip_param=None, crop_param=None, jitter_param=None, blur_param=None, 
+                 gray_param=None, scale_param=None, translate_param=None):
 
         self.transforms = []
 
@@ -477,7 +459,12 @@ class AllAugmentationTransform:
 
         # if gray_param is not None:
         #     self.transforms.append(RandomGrayscale(**gray_param))
+        
+        if scale_param is not None:
+            self.transforms.append(RandomScale(**scale_param))
 
+        if translate_param is not None:
+            self.transforms.append(RandomTranslate(**translate_param))
 
     def __call__(self, clip):
         for t in self.transforms:
@@ -485,13 +472,36 @@ class AllAugmentationTransform:
         return clip
 
 if __name__ == "__main__":
-    import skimage.io
-    x = skimage.io.imread("/home/lh/repo/code/lh/1.faceanimation/face-vae/demo_image/R-C.png")
+    import skimage.io as io
+    from skimage import transform
+    # import imageio
+    x = io.imread("/home/lh/repo/code/lh/1.faceanimation/face-vae/demo_image/R-C.png")
+    x = transform.resize(x, (256,256))
+    x = img_as_float32(x)
     # x = PIL.Image.fromarray(x)
-    x = img_as_float(x)
-    print(len(x))
-    print(x[0].shape)
-    Gblur=GaussianBlur()
-    y = np.asarray(Gblur([x])[0])
+    # print(len(x))
+    print(x.shape)
+    # Gblur=RandomPerspective(pers_num=30, enlarge_num=40)
+    # img = cv2.imread("./photo/cow.jpg")
+    # h, w = x.shape[0], x.shape[1]
+    # r_img = cv2.warpAffine(src = x,    # 原图像
+    #                         # 仿射变换的旋转矩阵参数
+    #                     M = cv2.getRotationMatrix2D(center=(w // 2, h // 2), angle=0, scale=0.8),  
+    #                     dsize = (w, h),   # 原尺寸大小（注意这里的顺序是相反的）
+    #                     borderValue = (0, 0, 0))                # 填充值
+    # Gblur = RandomRotation(30)
+    augmentation_params={
+            "rotation_param": {"degrees": 30},
+            # "perspective_param":{"pers_num": 30, "enlarge_num": 40},
+            # "flip_param": {"horizontal_flip": False, "time_flip": False},
+            "scale_param": {"ratio": [0.75, 1.2]},
+            "translate_param": {"x_ratio": 1/16, "y_ratio": 1/16}, 
+            "jitter_param": {"brightness": 0.2, "contrast": 0.2, "saturation": 0.2, "hue": 0.1},
+        }
+    
+    Gblur = AllAugmentationTransform(**augmentation_params)
+    
+    y = Gblur([x])[0]
+    
     imgpath = "/home/lh/repo/code/lh/1.faceanimation/face-vae/demo_image/R-C-pro.png"
-    skimage.io.imsave()
+    io.imsave(imgpath, img_as_ubyte(y))

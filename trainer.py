@@ -299,9 +299,9 @@ class GeneratorFull(nn.Module):
 
         transformed_kp_old, _, _, _, _ = self.efe(transformed_d, None, kp_c_tran)
         
-        kp_s, Rs = transform_kp(kp_c, yaw_s, pitch_s, roll_s, t_s, scale_s)
-        kp_d, Rd = transform_kp(kp_c, yaw_d, pitch_d, roll_d, t_d, scale_d)
-        transformed_kp, _ = transform_kp(kp_c_tran, yaw_tran, pitch_tran, roll_tran, t_tran, scale_tran)
+        kp_s, Rs = transform_kp(kp_s_old, yaw_s, pitch_s, roll_s, t_s, scale_s)
+        kp_d, Rd = transform_kp(kp_d_old, yaw_d, pitch_d, roll_d, t_d, scale_d)
+        transformed_kp, _ = transform_kp(transformed_kp_old, yaw_tran, pitch_tran, roll_tran, t_tran, scale_tran)
 
 
         reverse_kp = transform.warp_coordinates(transformed_kp[:, :, :2])
@@ -317,7 +317,7 @@ class GeneratorFull(nn.Module):
             "L": self.weights["L"] * self.losses["L"](kp_d),
             # "H": self.weights["H"] * self.losses["H"](yaw, pitch, roll, real_yaw, real_pitch, real_roll),
             # "D": self.weights["D"] * self.losses["D"](delta_d),
-            "D": self.weights["D"] * self.losses["D"](kp_d_old-kp_d),
+            "D": self.weights["D"] * self.losses["D"](kp_d_old-kp_c),
             "C": torch.Tensor([0.0]).cuda() if x_c_d is None else self.weights["C"] * self.losses["C"](x_c_d, x_a_c_d),
             # "K": torch.Tensor([0.0]).cuda() if x_kl_d[0] is None else self.weights["K"] * (self.losses["K"](x_kl_d, x_l2_d) + self.losses["K"](x_kl_s, x_l2_s)),
             # "K": torch.Tensor([0.0]).cuda() if x_kl_d[0] is None else self.weights["K"] * (self.losses["K"](x_kl_d) + self.losses["K"](x_kl_s)),
