@@ -136,7 +136,7 @@ class Logger:
         master_only_print("Epoch", self.epoch)
         with tqdm(total=len(self.dataloader)) as progress_bar:
             for idx, x in enumerate(self.dataloader):
-                if idx > 1000:
+                if idx > 8:
                     break
                 # s, d, s_a, d_a = x['source'], x['driving'],x['source_aug'],x['driving_aug']
                 s, d, s_a, d_a = x

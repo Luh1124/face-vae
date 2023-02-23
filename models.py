@@ -1005,9 +1005,9 @@ class HPE_EDE(nn.Module):
         for i in range(len(n_filters) - 1):
             res_layers.extend(self._make_layer(i, n_filters[i], n_filters[i + 1], n_blocks[i], use_weight_norm))
         self.res_layers = nn.Sequential(*res_layers)
-        self.fc_yaw = nn.Linear(n_filters[-1], n_bins)
-        self.fc_pitch = nn.Linear(n_filters[-1], n_bins)
-        self.fc_roll = nn.Linear(n_filters[-1], n_bins)
+        # self.fc_yaw = nn.Linear(n_filters[-1], n_bins)
+        # self.fc_pitch = nn.Linear(n_filters[-1], n_bins)
+        # self.fc_roll = nn.Linear(n_filters[-1], n_bins)
         self.fc_t = nn.Linear(n_filters[-1], 2)
         self.fc_scale = nn.Linear(n_filters[-1], 1)
         self.n_bins = n_bins
@@ -1023,20 +1023,21 @@ class HPE_EDE(nn.Module):
         x = self.pre_layers(x)
         x = self.res_layers(x)
         x = torch.mean(x, (2, 3))
-        yaw, pitch, roll, t, scale = self.fc_yaw(x), self.fc_pitch(x), self.fc_roll(x), self.fc_t(x), self.fc_scale(x)
-        yaw = torch.softmax(yaw, dim=1)
-        pitch = torch.softmax(pitch, dim=1)
-        roll = torch.softmax(roll, dim=1)
-        yaw = (yaw * self.idx_tensor).sum(dim=1)
-        pitch = (pitch * self.idx_tensor).sum(dim=1)
-        roll = (roll * self.idx_tensor).sum(dim=1)
-        yaw = (yaw - self.n_bins // 2) * 3 * np.pi / 180
-        pitch = (pitch - self.n_bins // 2) * 3 * np.pi / 180
-        roll = (roll - self.n_bins // 2) * 3 * np.pi / 180
+        t, scale = self.fc_t(x), self.fc_scale(x)
+        # yaw = torch.softmax(yaw, dim=1)
+        # pitch = torch.softmax(pitch, dim=1)
+        # roll = torch.softmax(roll, dim=1)
+        # yaw = (yaw * self.idx_tensor).sum(dim=1)
+        # pitch = (pitch * self.idx_tensor).sum(dim=1)
+        # roll = (roll * self.idx_tensor).sum(dim=1)
+        # yaw = (yaw - self.n_bins // 2) * 3 * np.pi / 180
+        # pitch = (pitch - self.n_bins // 2) * 3 * np.pi / 180
+        # roll = (roll - self.n_bins // 2) * 3 * np.pi / 180
         zero = torch.zeros((t.shape[0], 1)).to(t.device)
         t = torch.cat([t,zero], dim=-1)
         scale = scale.view(x.shape[0], 1, 1, 1)
-        return yaw, pitch, roll, t, scale
+        return None, None, None, t, scale
+    
 
 
 class MFE(nn.Module):

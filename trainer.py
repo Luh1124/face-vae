@@ -243,7 +243,7 @@ class GeneratorFull(nn.Module):
             "F": 10,
             "E": 20,
             "L": 10,
-            "H": 20,
+            # "H": 20,
             "D": 0.5,
             # "D": 10,
             "C": 10,
@@ -256,7 +256,7 @@ class GeneratorFull(nn.Module):
             "F": FeatureMatchingLoss(),
             "E": EquivarianceLoss(),
             "L": KeypointPriorLoss(),
-            "H": HeadPoseLoss(),
+            # "H": HeadPoseLoss(),
             "D": DeformationPriorLoss(),
             "C": torch.nn.SyncBatchNorm.convert_sync_batchnorm(ContrastiveLoss(mode="direction")).cuda(),
             # "K": KLDivergenceLoss(),
@@ -281,18 +281,28 @@ class GeneratorFull(nn.Module):
             self.pretrained.eval()
             real_yaw, real_pitch, real_roll = self.pretrained(F.interpolate(apply_imagenet_normalization(cated), size=(224, 224)))
         [yaw_s, yaw_d, yaw_tran], [pitch_s, pitch_d, pitch_tran], [roll_s, roll_d, roll_tran] = (
-            torch.chunk(yaw, 3, dim=0),
-            torch.chunk(pitch, 3, dim=0),
-            torch.chunk(roll, 3, dim=0),
+            torch.chunk(real_yaw, 3, dim=0),
+            torch.chunk(real_pitch, 3, dim=0),
+            torch.chunk(real_roll, 3, dim=0),
         )
-        kp_s_old, Rs = transform_kp(kp_c, yaw_s, pitch_s, roll_s, t_s, scale_s)
-        kp_d_old, Rd = transform_kp(kp_c, yaw_d, pitch_d, roll_d, t_d, scale_d)
-        transformed_kp_old, _ = transform_kp(kp_c_tran, yaw_tran, pitch_tran, roll_tran, t_tran, scale_tran)
+        # kp_s_old, Rs = transform_kp(kp_c, yaw_s, pitch_s, roll_s, t_s, scale_s)
+        # kp_d_old, Rd = transform_kp(kp_c, yaw_d, pitch_d, roll_d, t_d, scale_d)
+        # transformed_kp_old, _ = transform_kp(kp_c_tran, yaw_tran, pitch_tran, roll_tran, t_tran, scale_tran)
 
-        kp_s, x_c_s, x_a_c_s, x_kl_s, x_l2_s = self.efe(s, s_a, kp_s_old, train_vae=False)
-        kp_d, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_d_old, train_vae=train_vae)
+        # kp_s, x_c_s, x_a_c_s, x_kl_s, x_l2_s = self.efe(s, s_a, kp_s_old, train_vae=False)
+        # kp_d, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_d_old, train_vae=train_vae)
 
-        transformed_kp, _, _, _, _ = self.efe(transformed_d, None, transformed_kp_old)
+        # transformed_kp, _, _, _, _ = self.efe(transformed_d, None, transformed_kp_old)
+        
+        kp_s_old, x_c_s, x_a_c_s, x_kl_s, x_l2_s = self.efe(s, s_a, kp_c, train_vae=False)
+        kp_d_old, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_c, train_vae=train_vae)
+
+        transformed_kp_old, _, _, _, _ = self.efe(transformed_d, None, kp_c_tran)
+        
+        kp_s, Rs = transform_kp(kp_c, yaw_s, pitch_s, roll_s, t_s, scale_s)
+        kp_d, Rd = transform_kp(kp_c, yaw_d, pitch_d, roll_d, t_d, scale_d)
+        transformed_kp, _ = transform_kp(kp_c_tran, yaw_tran, pitch_tran, roll_tran, t_tran, scale_tran)
+
 
         reverse_kp = transform.warp_coordinates(transformed_kp[:, :, :2])
         deformation, occlusion, mask = self.mfe(fs, kp_s, kp_d, Rs, Rd)
@@ -305,7 +315,7 @@ class GeneratorFull(nn.Module):
             "F": self.weights["F"] * self.losses["F"](features_gd, features_d),
             "E": self.weights["E"] * self.losses["E"](kp_d, reverse_kp),
             "L": self.weights["L"] * self.losses["L"](kp_d),
-            "H": self.weights["H"] * self.losses["H"](yaw, pitch, roll, real_yaw, real_pitch, real_roll),
+            # "H": self.weights["H"] * self.losses["H"](yaw, pitch, roll, real_yaw, real_pitch, real_roll),
             # "D": self.weights["D"] * self.losses["D"](delta_d),
             "D": self.weights["D"] * self.losses["D"](kp_d_old-kp_d),
             "C": torch.Tensor([0.0]).cuda() if x_c_d is None else self.weights["C"] * self.losses["C"](x_c_d, x_a_c_d),

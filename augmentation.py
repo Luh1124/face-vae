@@ -484,13 +484,14 @@ class AllAugmentationTransform:
             clip = t(clip)
         return clip
 
-# if __name__ == "__main__":
-#     import skimage.io
-#     x = skimage.io.imread("/home/lh/repo_1/code/code_lh/1.faceanaimation/expvae_faceanimation/4.first_order_demo/images/02.png")
-#     # x = PIL.Image.fromarray(x)
-#     x = img_as_float(x)
-#     print(len(x))
-#     print(x[0].shape)
-#     Gblur=GaussianBlur()
-#     y = np.asarray(Gblur([x])[0])
-#     print(y.shape)
+if __name__ == "__main__":
+    import skimage.io
+    x = skimage.io.imread("/home/lh/repo/code/lh/1.faceanimation/face-vae/demo_image/R-C.png")
+    # x = PIL.Image.fromarray(x)
+    x = img_as_float(x)
+    print(len(x))
+    print(x[0].shape)
+    Gblur=GaussianBlur()
+    y = np.asarray(Gblur([x])[0])
+    imgpath = "/home/lh/repo/code/lh/1.faceanimation/face-vae/demo_image/R-C-pro.png"
+    skimage.io.imsave()
