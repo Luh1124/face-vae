@@ -244,7 +244,7 @@ class GeneratorFull(nn.Module):
             "E": 20,
             "L": 10,
             "H": 20,
-            "D": 0.5,
+            "D": 5,
             "C": 10,
             # "I": 0 # 10
         }
@@ -285,7 +285,7 @@ class GeneratorFull(nn.Module):
         )
         
         kp_s_old, Rs = transform_kp(kp_c_s, yaw_s, pitch_s, roll_s, t_s)
-        kp_d_old, Rd = transform_kp(kp_c_s/scale_s*scale_d, yaw_d, pitch_d, roll_d, t_d)
+        kp_d_old, Rd = transform_kp(kp_c_s / scale_s * scale_d, yaw_d, pitch_d, roll_d, t_d)
         kp_d_e_old, Rd = transform_kp(kp_c_d, yaw_d, pitch_d, roll_d, t_d)
         
         transformed_kp_old, _ = transform_kp(kp_c_tran, yaw_tran, pitch_tran, roll_tran, t_tran)

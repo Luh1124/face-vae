@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     args.ckp_dir = args.ckp_dir + args.ext
     args.vis_dir = args.vis_dir + args.ext
-    args.log_file = os.path.split(args.log_file)[0] + args.ext + '.txt'
+    args.log_file = args.log_file + args.ext + '.txt'
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_ids)[1:-1]
     os.environ["MASTER_ADDR"] = "localhost"
