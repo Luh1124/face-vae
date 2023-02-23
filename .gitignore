@@ -5,3 +5,4 @@ vis*
 taming
 __pycache__
 .vscode
+*.txt
