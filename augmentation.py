@@ -491,10 +491,10 @@ if __name__ == "__main__":
     #                     borderValue = (0, 0, 0))                # 填充值
     # Gblur = RandomRotation(30)
     augmentation_params={
-            "rotation_param": {"degrees": 30},
+            "rotation_param": {"degrees": 45},
             # "perspective_param":{"pers_num": 30, "enlarge_num": 40},
             # "flip_param": {"horizontal_flip": False, "time_flip": False},
-            "scale_param": {"ratio": [0.75, 1.2]},
+            "scale_param": {"ratio": [1, 1.2]},
             "translate_param": {"x_ratio": 1/16, "y_ratio": 1/16}, 
             "jitter_param": {"brightness": 0.2, "contrast": 0.2, "saturation": 0.2, "hue": 0.1},
         }
@@ -503,5 +503,5 @@ if __name__ == "__main__":
     
     y = Gblur([x])[0]
     
-    imgpath = "/home/lh/repo/code/lh/1.faceanimation/face-vae/demo_image/R-C-pro.png"
+    imgpath = "/home/lh/repo/code/lh/1.faceanimation/face-vae/demo_image/R-C-pro3.png"
     io.imsave(imgpath, img_as_ubyte(y))
