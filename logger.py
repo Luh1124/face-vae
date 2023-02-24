@@ -265,7 +265,7 @@ class Visualizer:
         if mask is not None:
             for i in range(mask.shape[1]):
                 mask_selected = mask[:, i:(i+1)]
-                mask_selected = mask_selected.squeeze(-1)
+                # mask_selected = mask_selected.squeeze(-1)
                 mask_selected = mask_selected.data.cpu().sum(2).repeat(1, 3, 1, 1)    # (n, 3, h, w)
                 # mask = F.softmax(mask.view(mask.shape[0], mask.shape[1], -1), dim=2).view(mask.shape)
                 mask_selected = F.interpolate(mask_selected, size=source.shape[1:3]).numpy()
