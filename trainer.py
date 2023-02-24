@@ -283,11 +283,11 @@ class GeneratorFull(nn.Module):
         )
         with torch.no_grad():
             self.pretrained.eval()
-            real_yaw.detach(), real_pitch.detach(), real_roll.detach() = self.pretrained(F.interpolate(apply_imagenet_normalization(cated), size=(224, 224)))
+            real_yaw, real_pitch, real_roll = self.pretrained(F.interpolate(apply_imagenet_normalization(cated), size=(224, 224)))
         [yaw_s, yaw_d, yaw_tran], [pitch_s, pitch_d, pitch_tran], [roll_s, roll_d, roll_tran] = (
-            torch.chunk(real_yaw, 3, dim=0),
-            torch.chunk(real_pitch, 3, dim=0),
-            torch.chunk(real_roll, 3, dim=0),
+            torch.chunk(real_yaw.detach(), 3, dim=0),
+            torch.chunk(real_pitch.detach(), 3, dim=0),
+            torch.chunk(real_roll.detach(), 3, dim=0),
         )
         kp_s_old, Rs = transform_kp(kp_c, yaw_s, pitch_s, roll_s, t_s, scale_s)
         kp_d_old, Rd = transform_kp(kp_c, yaw_d, pitch_d, roll_d, t_d, scale_d)
