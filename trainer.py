@@ -283,7 +283,7 @@ class GeneratorFull(nn.Module):
         )
         with torch.no_grad():
             self.pretrained.eval()
-            real_yaw, real_pitch, real_roll = self.pretrained(F.interpolate(apply_imagenet_normalization(cated), size=(224, 224)))
+            real_yaw.detach(), real_pitch.detach(), real_roll.detach() = self.pretrained(F.interpolate(apply_imagenet_normalization(cated), size=(224, 224)))
         [yaw_s, yaw_d, yaw_tran], [pitch_s, pitch_d, pitch_tran], [roll_s, roll_d, roll_tran] = (
             torch.chunk(real_yaw, 3, dim=0),
             torch.chunk(real_pitch, 3, dim=0),
@@ -321,7 +321,7 @@ class GeneratorFull(nn.Module):
             "L": self.weights["L"] * self.losses["L"](kp_d),
             # "H": self.weights["H"] * self.losses["H"](yaw, pitch, roll, real_yaw, real_pitch, real_roll),
             # "D": self.weights["D"] * self.losses["D"](delta_d),
-            "D": self.weights["D"] * self.losses["D"](kp_d_old-kp_d),
+            "D": self.weights["D"] * self.losses["D"](kp_d_old - kp_d),
             "C": torch.Tensor([0.0]).cuda() if x_c_d is None else self.weights["C"] * self.losses["C"](x_c_d, x_a_c_d),
             "I": self.weights["I"] * self.losses["I"]((kp_c, kp_c_d)),
         }

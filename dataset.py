@@ -50,10 +50,10 @@ class FramesDataset(Dataset):
         random_seed=0,
         pairs_list=None,
         augmentation_params={
-            "rotation_param": {"degrees": 30},
+            "rotation_param": {"degrees": 35},
             # "perspective_param":{"pers_num": 30, "enlarge_num": 40},
             # "flip_param": {"horizontal_flip": False, "time_flip": False},
-            "scale_param": {"ratio": [0.75, 1.2]},
+            "scale_param": {"ratio": [0.7, 1.2]},
             "translate_param": {"x_ratio": 1/16, "y_ratio": 1/16}, 
             "jitter_param": {"brightness": 0.2, "contrast": 0.2, "saturation": 0.2, "hue": 0.1},
         },
