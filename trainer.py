@@ -244,7 +244,7 @@ class GeneratorFull(nn.Module):
             "E": 20,
             "L": 10,
             # "H": 20,
-            "D": 0.5,
+            "D": 2,
             # "D": 10,
             "C": 10,
             # "K": 0, # 0.2
