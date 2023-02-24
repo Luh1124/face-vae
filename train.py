@@ -3,7 +3,7 @@ import argparse
 import torch.utils.data as data
 import torch.multiprocessing as mp
 from logger import Logger
-from dataset import FramesDataset, DatasetRepeater
+from dataset import FramesDataset, DatasetRepeater, AudioDataset
 from distributed import init_seeds, init_dist
 
 
@@ -11,7 +11,10 @@ def main(proc, args):
     world_size = len(args.gpu_ids)
     init_seeds(not args.benchmark)
     init_dist(proc, world_size)
-    trainset = DatasetRepeater(FramesDataset(root_dir=args.root_dir), num_repeats=100)
+    if args.data_name == 'vox':
+        trainset = DatasetRepeater(FramesDataset(root_dir=args.root_dir), num_repeats=100)
+    elif args.data_name == 'lrw':
+        trainset = AudioDataset(root_dir=args.root_dir)
     trainsampler = data.distributed.DistributedSampler(trainset)
     trainloader = data.DataLoader(trainset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=trainsampler)
     logger = Logger(args.ckp_dir, args.vis_dir, trainloader, args.lr, log_file_name=args.log_file)
@@ -40,7 +43,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_file", type=str, default="log_1644_.txt", help="log file")
     parser.add_argument("--ext", type=str, default="add", help="extension")
     parser.add_argument("--root_dir", type=str, default="/home/lh/repo/datasets/face-video-preprocessing/vox-png", help="data_path")
-
+    parser.add_argument("--data_name", type=str, default="lrw", help="data_name")
 
     args = parser.parse_args()
 

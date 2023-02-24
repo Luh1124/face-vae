@@ -136,6 +136,131 @@ class FramesDataset(Dataset):
         
             return video
 
+class AudioDataset(Dataset):
+    """
+    Dataset of videos, each video can be represented as:
+      - an image of concatenated frames
+      - '.mp4' or '.gif'
+      - folder with all frames
+    """
+
+    def __init__(self, 
+        root_dir, 
+        frame_shape=(256, 256, 3), 
+        id_sampling=False, 
+        is_train=True,
+        is_audio=False,
+        random_seed=0, 
+        augmentation_params={
+            "rotation_param": {"degrees": 35},
+            # "perspective_param":{"pers_num": 30, "enlarge_num": 40},
+            # "flip_param": {"horizontal_flip": False, "time_flip": False},
+            "scale_param": {"ratio": [0.7, 1.2]},
+            "translate_param": {"x_ratio": 1/16, "y_ratio": 1/16}, 
+            "jitter_param": {"brightness": 0.2, "contrast": 0.2, "saturation": 0.2, "hue": 0.1},
+        },
+    ):
+        self.root_dir = root_dir
+        self.audio_dir = os.path.join(root_dir,'mfcc')
+        self.image_dir = os.path.join(root_dir,'Image')
+        self.pose_dir = os.path.join(root_dir,'pose')
+
+        self.frame_shape = tuple(frame_shape)
+        self.id_sampling = id_sampling
+
+        print("Use predefined train-test split.")
+        train_videos =  glob.glob(os. path.join(self.image_dir,"*/train/*.mp4"))
+        test_videos =  glob.glob(os. path.join(self.image_dir,"*/test/*.mp4"))
+
+        if is_train:
+            self.videos = train_videos
+        else:
+            self.videos = test_videos
+
+        self.is_train = is_train
+        self.is_audio = is_audio
+
+        if self.is_train:
+            self.transform = AllAugmentationTransform(**augmentation_params)
+        else:
+            self.transform = None
+
+    def __len__(self):
+        return len(self.videos)
+
+    def __getitem__(self, idx):
+        if self.is_train and self.id_sampling:
+            name = self.videos[idx].split('.')[0]
+            path = np.random.choice(glob.glob(os.path.join(self.root_dir, name + '*.mp4')))
+        else:
+            dir_name = self.videos[idx].split(os.sep)[-3]
+        
+        if self.is_train:
+            mode = 'train'
+        else:
+            mode = 'test'
+
+
+        video_name = self.videos[idx]
+        video_array = read_video(video_name, self.frame_shape)
+
+        num_frames = len(video_array)
+        frame_idx = np.sort(np.random.choice(range(3, num_frames-3), replace=True, size=2))
+        # video_array = video_array[frame_idx]
+
+        basename = os.path.basename(video_name).split('.')[0]
+        # mfcc loading
+        # r = np.random.choice([x for x in range(3, 8)])
+        # num_frames = len(video_array)
+
+        # example_image = img_as_float32(io.imread(os.path.join(path, str(r)+'.png')))
+        # example_image = video_array[r]
+        
+        if self.is_audio:
+            audio_path = os.path.join(self.audio_dir, dir_name, f'{mode}_mfcc')
+            mfccs = np.load(os.path.join(audio_path, basename +'.npy'))[frame_idx, 1:]
+        
+        # pose_path = os.path.join(self.pose_dir, dir_name, f'{mode}_pose')
+        # kpts_path = os.path.join(self.audio_dir, name, f'{mode}_2d_sparse')
+
+        # path = os.path.join(self.image_dir, name)
+        
+        # poses = np.load(os.path.join(pose_path, basename +'.npy')) [frame_idx, :-1]
+        video_array = np.array(video_array)[frame_idx]
+     
+        # driving = np.array(video_array, dtype='float32')
+        # spatial_size = np.array(driving.shape[1:3][::-1])[np.newaxis]
+        # driving_pose = np.array(poses, dtype='float32')
+        # example_image = np.array(example_image, dtype='float32')
+
+        if self.is_train:
+            source = np.array(video_array[0], dtype="float32")
+            driving = np.array(video_array[1], dtype="float32")
+
+            driving = driving.transpose((2, 0, 1))
+            source = source.transpose((2, 0, 1))
+            if self.transform is not None:
+                # video_array = self.transform(video_array)
+                source_aug = np.array(self.transform([video_array[0]])[0])
+                driving_aug = np.array(self.transform([video_array[1]])[0])
+                source_aug = source_aug.transpose((2, 0, 1))
+                driving_aug = driving_aug.transpose((2, 0, 1))
+            else:
+                source_aug, driving_aug = None, None
+            
+            if self.is_audio:
+                source_mfcc = np.array(mfccs[0], dtype='float32')
+                driving_mfcc = np.array(mfccs[1], dtype='float32')
+                return source, driving, source_mfcc, driving_mfcc
+            else:
+                return source, driving, source_aug, driving_aug
+            # return source, driving
+        else:
+            video = np.array(video_array, dtype="float32")
+            # video = video.transpose((3, 0, 1, 2))
+            video = video.transpose((0, 3, 1, 2))
+
+        return video
 
 class DatasetRepeater(Dataset):
     """
