@@ -16,7 +16,7 @@ def main(proc, args):
     elif args.data_name == 'lrw':
         trainset = AudioDataset(root_dir=args.root_dir)
     trainsampler = data.distributed.DistributedSampler(trainset)
-    trainloader = data.DataLoader(trainset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=trainsampler)
+    trainloader = data.DataLoader(trainset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=trainsampler, drop_last=True)
     logger = Logger(args.ckp_dir, args.vis_dir, trainloader, args.lr, log_file_name=args.log_file)
     if args.ckp > 0:
         logger.load_cpk(args.ckp)
