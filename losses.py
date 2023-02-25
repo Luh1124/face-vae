@@ -401,3 +401,13 @@ class ReconLoss(nn.Module):
     def forward(self, Rec):
         loss = self.mseloss(Rec[0], Rec[1])
         return loss
+
+
+class IdLoss(nn.Module):
+    def __init__(self) -> None:
+        super(IdLoss, self).__init__()
+        self.mseloss = nn.L1Loss()
+
+    def forward(self, Rec):
+        loss = self.mseloss(Rec[0], Rec[1])
+        return loss
