@@ -43,7 +43,7 @@ class FramesDataset(Dataset):
 
     def __init__(
         self,
-        root_dir="/home/lh/repo/datasets/face-video-preprocessing/vox-png",
+        root_dir="/home/lh/repo/datasets/face-video-preprocessing/vox-png/",
         frame_shape=(256, 256, 3),
         id_sampling=True,
         is_train=True,
@@ -63,6 +63,7 @@ class FramesDataset(Dataset):
         self.frame_shape = tuple(frame_shape)
         self.pairs_list = pairs_list
         self.id_sampling = id_sampling
+        # import pdb; pdb.set_trace()
         if os.path.exists(os.path.join(root_dir, "train")):
             assert os.path.exists(os.path.join(root_dir, "test"))
             if id_sampling:
