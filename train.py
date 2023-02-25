@@ -40,7 +40,7 @@ if __name__ == "__main__":
     parser.add_argument("--ckp_dir", type=str, default="ckp_1644_", help="Checkpoint dir")
     parser.add_argument("--vis_dir", type=str, default="vis_1644_", help="Visualization dir")
     parser.add_argument("--ckp", type=int, default=0, help="Checkpoint epoch")
-    parser.add_argument("--log_file", type=str, default="log_1644_.txt", help="log file")
+    parser.add_argument("--log_file", type=str, default="log_1644_", help="log file")
     parser.add_argument("--ext", type=str, default="add", help="extension")
     parser.add_argument("--root_dir", type=str, default="/home/lh/repo/datasets/face-video-preprocessing/vox-png", help="data_path")
     parser.add_argument("--data_name", type=str, default="lrw", help="data_name")
@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     args.ckp_dir = args.ckp_dir + args.ext
     args.vis_dir = args.vis_dir + args.ext
-    args.log_file = os.path.split(args.log_file)[0] + args.ext + '.txt'
+    args.log_file = args.log_file + args.ext + '.txt'
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_ids)[1:-1]
     os.environ["MASTER_ADDR"] = "localhost"
