@@ -772,7 +772,8 @@ class EFE_conv5(nn.Module):
         x = x.view(N, self.C, self.D, H, W)
         x = self.up(x)
         x = self.out_conv(x) # [N K 16 64 64]
-        xc = kp2gaussian_3d(kpc, spatial_size=x.shape[2:])
+        kpc_detach = kpc.detach()
+        xc = kp2gaussian_3d(kpc_detach, spatial_size=x.shape[2:])
         x = torch.cat((x, xc), dim=1)
         x = self.mix(x)
         x = self.mix_out(x)
@@ -780,8 +781,8 @@ class EFE_conv5(nn.Module):
         heatmap = out2heatmap(x)
         # res kpc
         # kp = 0.3*heatmap2kp(heatmap) + kpc
-        kp = heatmap2kp(heatmap)
-        return kp, x_c, x_a_c, None, None
+        delta = heatmap2kp(heatmap) - kpc_detach
+        return delta, x_c, x_a_c, None, None
 
 
 class flatten_vae6(nn.Module):
@@ -1008,7 +1009,7 @@ class HPE_EDE(nn.Module):
         x = self.pre_layers(x)
         x = self.res_layers(x)
         x = torch.mean(x, (2, 3))
-        t, scale = self.fc_t(x), self.fc_scale(x)
+        t, scale = self.fc_t(x), F.relu(self.fc_scale(x))
         # yaw = torch.softmax(yaw, dim=1)
         # pitch = torch.softmax(pitch, dim=1)
         # roll = torch.softmax(roll, dim=1)
