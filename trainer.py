@@ -299,8 +299,8 @@ class GeneratorFull(nn.Module):
 
         # transformed_kp, _, _, _, _ = self.efe(transformed_d, None, transformed_kp_old)
         
-        delta_s, x_c_s, x_a_c_s, x_kl_s, x_l2_s = self.efe(s, None, kp_c, train_vae=False)
-        delta_d, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_c, train_vae=train_vae)
+        delta_s, x_c_s, x_a_c_s, x_kl_s, x_l2_s = self.efe(s, None, kp_c)
+        delta_d, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_c)
 
         delta_tran, _, _, _, _ = self.efe(transformed_d, None, kp_c_tran)
         
