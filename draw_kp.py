@@ -248,17 +248,32 @@ def demo(args):
             # delta = delta
             delta_d, _, _, _, _ = g_models["efe"](img, None, kp_c)
             kp_d1 = kp_c
-            kp_d2, Rd = transform_kp(kp_c, yaw*0, pitch*0, roll*0, t*0, scale)
-            kp_d3 = kp_c + delta_d
-            kp_d4, Rd = transform_kp(kp_c + delta_d, yaw*0, pitch*0, roll*0, t*0, scale)
-            kp_d5, Rd = transform_kp(kp_c + delta_d, yaw, pitch, roll, t, scale)
-            kp_d6, Rd = transform_kp(kp_c + delta_d*0, yaw, pitch, roll, t*0, scale=1)
-            kp_d7, Rd = transform_kp(kp_c + delta_d*0, yaw*0, pitch*0, roll*0, t, scale=1)
-            kp_d8 = kp_d7
-
+            kp_d2 = kp_c + delta_d
+            kp_d3, Rd3 = transform_kp(kp_c + delta_d, yaw*0, pitch*0, roll*0, t*0, scale)
+            kp_d4, Rd4= transform_kp(kp_c + delta_d, yaw, pitch, roll, t*0, scale)
+            kp_d5, Rd5 = transform_kp(kp_c + delta_d, yaw, pitch, roll, t, scale)
+            kp_d6, Rd6 = transform_kp(kp_c, yaw, pitch, roll, t, scale)
+            kp_d7, Rd7 = kp_d6 + transform_kp(delta_d, yaw, pitch, roll, t*0, scale)[0], Rd6
+            kp_d8, Rd8 = transform_kp(kp_c + delta_d, yaw, pitch, roll, t, scale=1)
 
             # deformation, occlusion, mask = g_models["mfe"](fs, kp_s, kp_d8, Rs, Rd)
             # generated_d = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d1, Rs, Rd3)
+            generated_d1 = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d2, Rs, Rd3)
+            generated_d2 = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d3, Rs, Rd3)
+            generated_d3 = g_models["generator"](fs, deformation, occlusion)	
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d4, Rs, Rd4)
+            generated_d4 = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d5, Rs, Rd5)
+            generated_d5 = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d6, Rs, Rd6)
+            generated_d6 = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d7, Rs, Rd7)
+            generated_d7 = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d8, Rs, Rd8)
+            generated_d8 = g_models["generator"](fs, deformation, occlusion)
 
             s_np = s.data.cpu()
             kp_s_np = kp_s.data.cpu().numpy()[:, :, :2]
@@ -287,6 +302,23 @@ def demo(args):
         
         # os.makedirs(dirpath+'out', exist_ok=True)
         # out_path = os.path.join(dirpath+'out', filename)
+            generated_d1_np = generated_d1.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d2_np = generated_d2.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d3_np = generated_d3.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d4_np = generated_d4.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d5_np = generated_d5.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d6_np = generated_d6.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d7_np = generated_d7.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d8_np = generated_d8.data.cpu().numpy().transpose([0, 2, 3, 1])
+            img_d = [(generated_d1_np, kp_d1_np), (generated_d2_np, kp_d2_np), (generated_d3_np, kp_d3_np), 
+                    (generated_d4_np, kp_d4_np), (generated_d5_np, kp_d5_np), (generated_d6_np, kp_d6_np),
+                    (generated_d7_np, kp_d7_np), (generated_d8_np, kp_d8_np)]
+
+            img_d = vs.create_image_grid(*img_d)
+            img_d = (255 * img_d).astype(np.uint8)
+            imageio.imwrite(os.path.dirname(dri) + '_kp_out' + '/' + f'{idx}_d_'+os.path.basename(dri), img_d)
+
+            
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="face-vid2vid")
@@ -294,11 +326,11 @@ if __name__ == "__main__":
     def str2bool(s):
         return s.lower().startswith("t")
 
-    parser.add_argument("--ckp_dir", type=str, default="ckp", help="Checkpoint dir")
+    parser.add_argument("--ckp_dir", type=str, default="ckp_1644_main8.1", help="Checkpoint dir")
     parser.add_argument("--output", type=str, default="output.gif", help="Output video")
-    parser.add_argument("--ckp", type=int, default=13, help="Checkpoint epoch")
-    parser.add_argument("--source", type=str, default="./kp_s", help="Source image, f for face frontalization, r for reconstruction")
-    parser.add_argument("--driving", type=str, default='./kp_d/d', help="Driving dir")
+    parser.add_argument("--ckp", type=int, default=10, help="Checkpoint epoch")
+    parser.add_argument("--source", type=str, default="./kp_d/d", help="Source image, f for face frontalization, r for reconstruction")
+    parser.add_argument("--driving", type=str, default='./kp_s', help="Driving dir")
     parser.add_argument("--num_frames", type=int, default=90, help="Number of frames")
 
     args = parser.parse_args()
