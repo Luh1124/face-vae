@@ -5,7 +5,8 @@ import numpy as np
 import torch.nn.functional as F
 from torch import nn
 # from models import EFE_linear as EFE
-from models import EFE_conv5 as EFE
+# from models import EFE_conv5 as EFE
+from models import EFE_6 as EFE
 from models import AFE, CKD, HPE_EDE, MFE, Generator, Discriminator
 from losses import ContrastiveLoss_linear as ContrastiveLoss
 # from losses import ContrastiveLoss_conv2 as ContrastiveLoss
@@ -245,7 +246,7 @@ class GeneratorFull(nn.Module):
             "E": 20,
             "L": 10,
             # "H": 20,
-            "D": 10,
+            "D": 2,
             # "D": 10,
             "C": 10,
             # "K": 0, # 0.2
@@ -307,8 +308,9 @@ class GeneratorFull(nn.Module):
         kp_d, Rd = transform_kp(kp_c+delta_d, yaw_d, pitch_d, roll_d, t_d, scale_d)
         transformed_kp, _ = transform_kp(kp_c_tran+delta_tran, yaw_tran, pitch_tran, roll_tran, t_tran, scale_tran)
 
-
+        reverse_kp_c = transform.warp_coordinates(kp_c_tran[:, :, :2])
         reverse_kp = transform.warp_coordinates(transformed_kp[:, :, :2])
+        
         deformation, occlusion, mask = self.mfe(fs, kp_s, kp_d, Rs, Rd)
         generated_d = self.generator(fs, deformation, occlusion)
         output_d, features_d = self.discriminator(d, kp_d)
@@ -317,7 +319,7 @@ class GeneratorFull(nn.Module):
             "P": self.weights["P"] * self.losses["P"](generated_d, d),
             "G": self.weights["G"] * self.losses["G"](output_gd, True, False),
             "F": self.weights["F"] * self.losses["F"](features_gd, features_d),
-            "E": self.weights["E"] * self.losses["E"](kp_d, reverse_kp),
+            "E": self.weights["E"] * (self.losses["E"](kp_d, reverse_kp) + self.losses["E"](kp_c, reverse_kp_c)),
             "L": self.weights["L"] * self.losses["L"](kp_d),
             # "H": self.weights["H"] * self.losses["H"](yaw, pitch, roll, real_yaw, real_pitch, real_roll),
             # "D": self.weights["D"] * self.losses["D"](delta_d),

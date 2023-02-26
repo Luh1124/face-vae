@@ -11,7 +11,7 @@ import collections
 from distributed import master_only, master_only_print, get_rank, is_master
 
 # from models import EFE_linear as EFE
-from models import EFE_conv5 as EFE
+from models import EFE_6 as EFE
 from models import AFE, CKD, HPE_EDE, MFE, Generator, Discriminator
 from trainer import GeneratorFull, DiscriminatorFull
 from tqdm import tqdm
