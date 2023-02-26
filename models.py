@@ -1174,6 +1174,20 @@ class Discriminator(nn.Module):
 
     def __init__(self, use_weight_norm=True, down_seq=[64, 128, 256, 512], K=15):
         super().__init__()
+        self.dis1 = Discriminator1().cuda()
+        self.dis2 = Discriminator2().cuda()
+
+    def forward(self, x1, x2, kp):
+        output1, features1 = self.dis1(x1, kp)
+        output2, features2 = self.dis2(x2)
+
+        return output1, output2, features1, features2
+
+class Discriminator1(nn.Module):
+    # Patch Discriminator
+
+    def __init__(self, use_weight_norm=True, down_seq=[64, 128, 256, 512], K=15):
+        super().__init__()
         layers = []
         layers.append(ConvBlock2D("CNA", 3 + K, down_seq[0], 3, 2, 1, use_weight_norm, "instance", "leakyrelu"))
         layers.extend(
@@ -1188,6 +1202,31 @@ class Discriminator(nn.Module):
     def forward(self, x, kp):
         heatmap = kp2gaussian_2d(kp.detach()[:, :, :2], x.shape[2:])
         x = torch.cat([x, heatmap], dim=1)
+        res = [x]
+        for layer in self.layers:
+            x = res[-1]
+            res.append(layer(x))
+        output = res[-1]
+        features = res[1:-1]
+        return output, features
+
+class Discriminator2(nn.Module):
+    # Patch Discriminator
+
+    def __init__(self, use_weight_norm=True, down_seq=[64, 128, 256, 512]):
+        super().__init__()
+        layers = []
+        layers.append(ConvBlock2D("CNA", 3, down_seq[0], 3, 2, 1, use_weight_norm, "instance", "leakyrelu"))
+        layers.extend(
+            [
+                ConvBlock2D("CNA", down_seq[i], down_seq[i + 1], 3, 2 if i < len(down_seq) - 2 else 1, 1, use_weight_norm, "instance", "leakyrelu")
+                for i in range(len(down_seq) - 1)
+            ]
+        )
+        layers.append(ConvBlock2D("CN", down_seq[-1], 1, 3, 1, 1, use_weight_norm, activation_type="none"))
+        self.layers = nn.ModuleList(layers)
+
+    def forward(self, x):
         res = [x]
         for layer in self.layers:
             x = res[-1]

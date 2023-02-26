@@ -12,7 +12,7 @@ from losses import ContrastiveLoss_linear as ContrastiveLoss
 # from losses import ContrastiveLoss_conv2 as ContrastiveLoss
 from losses import (PerceptualLoss, GANLoss, FeatureMatchingLoss, EquivarianceLoss, KeypointPriorLoss, 
                     HeadPoseLoss, DeformationPriorLoss, KLDivergenceLoss, ReconLoss, IdLoss)
-from utils import transform_kp, make_coordinate_grid_2d, apply_imagenet_normalization
+from utils import transform_kp, make_coordinate_grid_2d, apply_imagenet_normalization, get_rot_mat
 
 
 class Hopenet(nn.Module):
@@ -307,18 +307,32 @@ class GeneratorFull(nn.Module):
         kp_s, Rs = transform_kp(kp_c+delta_s, yaw_s, pitch_s, roll_s, t_s, scale_s)
         kp_d, Rd = transform_kp(kp_c+delta_d, yaw_d, pitch_d, roll_d, t_d, scale_d)
         transformed_kp, _ = transform_kp(kp_c_tran+delta_tran, yaw_tran, pitch_tran, roll_tran, t_tran, scale_tran)
-
+        
         reverse_kp_c = transform.warp_coordinates(kp_c_tran[:, :, :2])
         reverse_kp = transform.warp_coordinates(transformed_kp[:, :, :2])
         
-        deformation, occlusion, mask = self.mfe(fs, kp_s, kp_d, Rs, Rd)
-        generated_d = self.generator(fs, deformation, occlusion)
-        output_d, features_d = self.discriminator(d, kp_d)
-        output_gd, features_gd = self.discriminator(generated_d, kp_d)
+        Rc = get_rot_mat(yaw_s.detach()*0.0, pitch_s.detach()*0.0, roll_s.detach()*0.0) # eye
+        kp_ss, kp_dc = torch.cat([kp_s, kp_s], dim=0), torch.cat([kp_d, kp_c], dim=0)
+        Rss, Rdc = torch.cat([Rs, Rs], dim=0), torch.cat([Rd, Rc], dim=0)
+        fss = torch.cat([fs, fs], dim=0)
+        # deformation, occlusion, mask = self.mfe(fs, kp_s, kp_d, Rs, Rd)
+        deformation_dc, occlusion_dc, mask_dc = self.mfe(fss, kp_ss, kp_dc, Rss, Rdc)
+        # generated_d = self.generator(fs, deformation, occlusion)
+        generated_dc = self.generator(fss, deformation_dc, occlusion_dc)
+
+        [occlusion, occlusion_c], [mask, mask_c], [generated_d, generated_c] = (
+                torch.chunk(occlusion_dc, 2, dim=0),
+                torch.chunk(mask_dc, 2, dim=0),
+                torch.chunk(generated_dc, 2, dim=0)
+            )
+
+        output_d, output_d2, features_d, features_d2 = self.discriminator(d, d, kp_d)
+        output_gd, output_gc, features_gd, features_gc = self.discriminator(generated_d, generated_c, kp_d)
+        
         loss = {
             "P": self.weights["P"] * self.losses["P"](generated_d, d),
-            "G": self.weights["G"] * self.losses["G"](output_gd, True, False),
-            "F": self.weights["F"] * self.losses["F"](features_gd, features_d),
+            "G": self.weights["G"] * (self.losses["G"](output_gd, True, False) + self.losses["G"](output_gc, True, False)),
+            "F": self.weights["F"] * (self.losses["F"](features_gd, features_d) + self.losses["F"](features_gc, features_d2)),
             "E": self.weights["E"] * (self.losses["E"](kp_d, reverse_kp) + self.losses["E"](kp_c, reverse_kp_c)),
             "L": self.weights["L"] * self.losses["L"](kp_d),
             # "H": self.weights["H"] * self.losses["H"](yaw, pitch, roll, real_yaw, real_pitch, real_roll),
