@@ -297,8 +297,8 @@ if __name__ == "__main__":
     parser.add_argument("--ckp_dir", type=str, default="ckp", help="Checkpoint dir")
     parser.add_argument("--output", type=str, default="output.gif", help="Output video")
     parser.add_argument("--ckp", type=int, default=13, help="Checkpoint epoch")
-    parser.add_argument("--source", type=str, default="./kp_d/d", help="Source image, f for face frontalization, r for reconstruction")
-    parser.add_argument("--driving", type=str, default='./kp_s', help="Driving dir")
+    parser.add_argument("--source", type=str, default="./kp_s", help="Source image, f for face frontalization, r for reconstruction")
+    parser.add_argument("--driving", type=str, default='./kp_d/d', help="Driving dir")
     parser.add_argument("--num_frames", type=int, default=90, help="Number of frames")
 
     args = parser.parse_args()
