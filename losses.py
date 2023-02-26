@@ -220,7 +220,6 @@ class KeypointPriorLoss(nn.Module):
         )
         return loss
 
-
 class HeadPoseLoss(nn.Module):
     def __init__(self):
         super().__init__()
