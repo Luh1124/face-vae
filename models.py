@@ -1076,7 +1076,7 @@ class EFE_6(nn.Module):
 
     def decode(self, x_en, kpc=None):
         if kpc is not None:
-            x_en = torch.cat([x_en, kpc.flatten(1).detach()], dim=1)
+            x_en = torch.cat([x_en, kpc.flatten(1)], dim=1)
         else:
             x_en = x_en
         feature = self.fc_map(x_en)
