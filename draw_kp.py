@@ -232,8 +232,9 @@ def demo(args):
         with torch.no_grad():
             hp.eval()
             yaw, pitch, roll = hp(F.interpolate(apply_imagenet_normalization(s), size=(224, 224)))
-        kp_s, Rs = transform_kp(kp_c, yaw, pitch, roll, t, scale)
-        kp_s, _, _, _, _ = g_models["efe"](s, None, kp_s, train_vae=False)
+        
+        delta_s, _, _, _, _ = g_models["efe"](s, None, kp_c)
+        kp_s, Rs = transform_kp(kp_c + delta_s, yaw, pitch, roll, t, scale)
         
         for dri in driving_paths:
             img = img_as_float32(io.imread(dri))[:, :, :3]
@@ -245,33 +246,25 @@ def demo(args):
                 yaw, pitch, roll = hp(F.interpolate(apply_imagenet_normalization(img), size=(224, 224)))
             
             # delta = delta
-            kp_d1, Rd = transform_kp(kp_c, yaw*0, pitch*0, roll*0, t*0, scale=1)
+            delta_d, _, _, _, _ = g_models["efe"](img, None, kp_c)
+            kp_d1 = kp_c
             kp_d2, Rd = transform_kp(kp_c, yaw*0, pitch*0, roll*0, t*0, scale)
-            # kp_d2 = kp_d1 * -1
-            kp_d3, _, _, _, _ = g_models["efe"](img, None, kp_d2, train_vae=False)
-            
-            kp_d4, Rd = transform_kp(kp_c, yaw, pitch, roll, t, scale=-1)
-            kp_d5, _, _, _, _ = g_models["efe"](img, None, kp_d4, train_vae=False)
+            kp_d3 = kp_c + delta_d
+            kp_d4, Rd = transform_kp(kp_c + delta_d, yaw*0, pitch*0, roll*0, t*0, scale)
+            kp_d5, Rd = transform_kp(kp_c + delta_d, yaw, pitch, roll, t, scale)
+            kp_d6, Rd = transform_kp(kp_c + delta_d*0, yaw, pitch, roll, t*0, scale=1)
+            kp_d7, Rd = transform_kp(kp_c + delta_d*0, yaw*0, pitch*0, roll*0, t, scale=1)
+            kp_d8 = kp_d7
 
-            # kp_d6, Rd = transform_kp(kp_c, yaw, pitch, roll, t, scale=-1)
-            # kp_d7, _, _, _, _ = g_models["efe"](img, None, kp_d6, train_vae=False)
-            
-            kp_d6, Rd = transform_kp(kp_c, yaw*0, pitch*0, roll*0, t, scale)
-            kp_d7, Rd = transform_kp(kp_c, yaw, pitch, roll, t, scale)
-            kp_d8, _, _, _, _ = g_models["efe"](img, None, kp_c, train_vae=False)
-            # print(kp_c)
-            # print(scale)
-            # print(t)
-            # print(kp_d7 - kp_d7_old)
-            # print(Rd)
-            deformation, occlusion, mask = g_models["mfe"](fs, kp_s, kp_d8, Rs, Rd)
-            generated_d = g_models["generator"](fs, deformation, occlusion)
+
+            # deformation, occlusion, mask = g_models["mfe"](fs, kp_s, kp_d8, Rs, Rd)
+            # generated_d = g_models["generator"](fs, deformation, occlusion)
 
             s_np = s.data.cpu()
             kp_s_np = kp_s.data.cpu().numpy()[:, :, :2]
             s_np = np.transpose(s_np, [0, 2, 3, 1])
             img_np = img.data.cpu()
-            generated_d_np = generated_d.data.cpu()
+            # generated_d_np = generated_d.data.cpu()
 
             kp_d1_np = kp_d1.data.cpu().numpy()[:, :, :2]
             kp_d2_np = kp_d2.data.cpu().numpy()[:, :, :2]
@@ -283,8 +276,8 @@ def demo(args):
             kp_d8_np = kp_d8.data.cpu().numpy()[:, :, :2]
 
             img_np = np.transpose(img_np, [0, 2, 3, 1])
-            generated_d_np = np.transpose(generated_d_np, [0, 2, 3, 1])
-            img_with_kp = [(s_np, kp_s_np), (img_np, kp_d1_np), (img_np, kp_d2_np), (img_np, kp_d3_np), (img_np, kp_d4_np), (img_np, kp_d5_np), (img_np, kp_d6_np), (img_np, kp_d7_np), (img_np, kp_d8_np),generated_d_np]
+            # generated_d_np = np.transpose(generated_d_np, [0, 2, 3, 1])
+            img_with_kp = [(s_np, kp_s_np), (img_np, kp_d1_np), (img_np, kp_d2_np), (img_np, kp_d3_np), (img_np, kp_d4_np), (img_np, kp_d5_np), (img_np, kp_d6_np), (img_np, kp_d7_np), (img_np, kp_d8_np)]
             img_with_kp = vs.create_image_grid(*img_with_kp)
             img_with_kp = img_with_kp.clip(0, 1)
             img_with_kp = (255 * img_with_kp).astype(np.uint8)
@@ -303,7 +296,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--ckp_dir", type=str, default="ckp", help="Checkpoint dir")
     parser.add_argument("--output", type=str, default="output.gif", help="Output video")
-    parser.add_argument("--ckp", type=int, default=19, help="Checkpoint epoch")
+    parser.add_argument("--ckp", type=int, default=13, help="Checkpoint epoch")
     parser.add_argument("--source", type=str, default="./kp_d/d", help="Source image, f for face frontalization, r for reconstruction")
     parser.add_argument("--driving", type=str, default='./kp_s', help="Driving dir")
     parser.add_argument("--num_frames", type=int, default=90, help="Number of frames")
