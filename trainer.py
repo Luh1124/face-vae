@@ -245,7 +245,7 @@ class GeneratorFull(nn.Module):
             "E": 20,
             "L": 10,
             # "H": 20,
-            "D": 5,
+            "D": 10,
             # "D": 10,
             "C": 10,
             # "K": 0, # 0.2
@@ -325,7 +325,7 @@ class GeneratorFull(nn.Module):
             "C": torch.Tensor([0.0]).cuda() if x_c_d is None else self.weights["C"] * self.losses["C"](x_c_d, x_a_c_d),
             "I": self.weights["I"] * self.losses["I"]((kp_c, kp_c_d)),
         }
-        return loss, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask
+        return loss, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask
 
 class DiscriminatorFull(nn.Module):
     def __init__(self, discriminator: Discriminator):

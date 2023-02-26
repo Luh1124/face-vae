@@ -85,8 +85,8 @@ class Logger:
         self.log_file.flush()
 
     @master_only
-    def visualize_rec(self, x, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask):
-        image = self.visualizer.visualize(x, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask)
+    def visualize_rec(self, x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask):
+        image = self.visualizer.visualize(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
         imageio.imsave(os.path.join(self.vis_dir, "%s-rec.png" % str(self.epoch).zfill(self.zfill_num)), image)
 
     @master_only
@@ -126,11 +126,11 @@ class Logger:
         self.d_losses.append(list(d_losses.values()))
 
     @master_only
-    def log_epoch(self, x, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask):
+    def log_epoch(self, x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask):
         if (self.epoch + 1) % self.checkpoint_freq == 0:
             self.save_cpk()
         self.log_scores()
-        self.visualize_rec(x, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask)
+        self.visualize_rec(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
 
     def step(self):
         master_only_print("Epoch", self.epoch)
@@ -155,7 +155,7 @@ class Logger:
                 # elif idx % period == 0:
                 #     train_vae = True
                 train_vae = False
-                losses_g, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d, s_a, d_a, train_vae)
+                losses_g, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d, s_a, d_a, train_vae)
                 # losses_g, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d)         
                 loss_g = sum(losses_g.values())
                 loss_g.backward()
@@ -178,9 +178,9 @@ class Logger:
                     losses = {}
                     losses.update(losses_g)
                     losses.update(losses_d)
-                    self.visualizer.writer_vis(x, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask, loss_dict={'index':self.epoch*len(self.dataloader) + idx,'epoch':self.epoch,'losess':losses})
+                    self.visualizer.writer_vis(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask, loss_dict={'index':self.epoch*len(self.dataloader) + idx,'epoch':self.epoch,'losess':losses})
         
-        self.log_epoch(x, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask)
+        self.log_epoch(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
         self.epoch += 1
 
 
@@ -224,7 +224,7 @@ class Visualizer:
                 out.append(self.create_image_column(arg))
         return np.concatenate(out, axis=1)
 
-    def visualize(self, x, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask):
+    def visualize(self, x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask):
         images = []
         s, d, s_a, d_a = x
         # Source image with keypoints
@@ -244,10 +244,16 @@ class Visualizer:
         transformed_kp = transformed_kp.data.cpu().numpy()[:, :, :2]
         images.append((transformed, transformed_kp))
 
-        # Driving image with keypoints
-        kp_driving = kp_d.data.cpu().numpy()[:, :, :2]
+        # Driving image with keypoints_neutral
+        kp_c_driving = kp_c.data.cpu().numpy()[:, :, :2]
         driving = d.data.cpu().numpy()
         driving = np.transpose(driving, [0, 2, 3, 1])
+        images.append((driving, kp_c_driving))
+
+        # Driving image with keypoints
+        kp_driving = kp_d.data.cpu().numpy()[:, :, :2]
+        # driving = d.data.cpu().numpy()
+        # driving = np.transpose(driving, [0, 2, 3, 1])
         images.append((driving, kp_driving))
 
         # Result with and without keypoints
@@ -288,8 +294,8 @@ class Visualizer:
         image = (255 * image).astype(np.uint8)
         return image
 
-    def writer_vis(self, x, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask, loss_dict = None):
-        image = self.visualize(x, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask)
+    def writer_vis(self, x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask, loss_dict = None):
+        image = self.visualize(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
         if self.writer is not None:
             if loss_dict:
                 index = loss_dict['index']
