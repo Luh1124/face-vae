@@ -227,6 +227,7 @@ class Visualizer:
     def visualize(self, x, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask):
         images = []
         s, d, s_a, d_a = x
+        kp_c, kp_s = kp_s
         # Source image with keypoints
         source = s.data.cpu()
         kp_source = kp_s.data.cpu().numpy()[:, :, :2]
@@ -244,10 +245,16 @@ class Visualizer:
         transformed_kp = transformed_kp.data.cpu().numpy()[:, :, :2]
         images.append((transformed, transformed_kp))
 
-        # Driving image with keypoints
-        kp_driving = kp_d.data.cpu().numpy()[:, :, :2]
+        # Driving image with kp_c
+        kp_driving_c = kp_c.data.cpu().numpy()[:, :, :2]
         driving = d.data.cpu().numpy()
         driving = np.transpose(driving, [0, 2, 3, 1])
+        images.append((driving, kp_driving_c))
+
+        # Driving image with keypoints
+        kp_driving = kp_d.data.cpu().numpy()[:, :, :2]
+        # driving = d.data.cpu().numpy()
+        # driving = np.transpose(driving, [0, 2, 3, 1])
         images.append((driving, kp_driving))
 
         # Result with and without keypoints
