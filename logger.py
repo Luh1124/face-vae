@@ -155,7 +155,7 @@ class Logger:
                 # elif idx % period == 0:
                 #     train_vae = True
                 train_vae = False
-                losses_g, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d, s_a, d_a, train_vae)
+                losses_g, generated_d, generated_c, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d, s_a, d_a, train_vae)
                 # losses_g, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d)         
                 loss_g = sum(losses_g.values())
                 loss_g.backward()
@@ -164,7 +164,7 @@ class Logger:
                     optimizer.zero_grad()
                 for optimizer in self.d_optimizers.values():
                     optimizer.zero_grad()
-                losses_d = self.d_full(d, generated_d, kp_d)
+                losses_d = self.d_full(d, generated_d, generated_c, kp_d)
                 loss_d = sum(losses_d.values())
                 loss_d.backward()
                 for optimizer in self.d_optimizers.values():

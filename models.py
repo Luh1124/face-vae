@@ -1053,12 +1053,12 @@ class EFE_6(nn.Module):
 
         cat_channels = K*3 if use_kpc else 0
         
-        self.fc_map = nn.Sequential([nn.Linear(n_filters[-1]*4*4 + cat_channels, 512), 
+        self.fc_map = nn.Sequential(nn.Linear(n_filters[-1]*4*4 + cat_channels, 512), 
                                     nn.BatchNorm1d(512),
                                     nn.ReLU(),
                                     nn.Linear(512, 256),
                                     nn.BatchNorm1d(256),
-                                    nn.ReLU()])
+                                    nn.ReLU())
                                     
         self.fc_delta = nn.Linear(256, K*3)
         self.weight = weight
@@ -1076,7 +1076,7 @@ class EFE_6(nn.Module):
 
     def decode(self, x_en, kpc=None):
         if kpc is not None:
-            x_en = torch.cat([x_en, kpc.flatten(1).detach()], dim=1)
+            x_en = torch.cat([x_en, kpc.flatten(1)], dim=1)
         else:
             x_en = x_en
         feature = self.fc_map(x_en)

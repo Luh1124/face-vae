@@ -299,8 +299,8 @@ class GeneratorFull(nn.Module):
 
         # transformed_kp, _, _, _, _ = self.efe(transformed_d, None, transformed_kp_old)
         
-        delta_s, x_c_s, x_a_c_s, x_kl_s, x_l2_s = self.efe(s, None, kp_c, train_vae=False)
-        delta_d, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_c, train_vae=train_vae)
+        delta_s, x_c_s, x_a_c_s, x_kl_s, x_l2_s = self.efe(s, None, kp_c)
+        delta_d, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_c)
 
         delta_tran, _, _, _, _ = self.efe(transformed_d, None, kp_c_tran)
         
@@ -341,7 +341,7 @@ class GeneratorFull(nn.Module):
             "C": torch.Tensor([0.0]).cuda() if x_c_d is None else self.weights["C"] * self.losses["C"](x_c_d, x_a_c_d),
             "I": self.weights["I"] * self.losses["I"]((kp_c, kp_c_d)),
         }
-        return loss, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask
+        return loss, generated_d, generated_c, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask
 
 class DiscriminatorFull(nn.Module):
     def __init__(self, discriminator: Discriminator):
@@ -354,11 +354,19 @@ class DiscriminatorFull(nn.Module):
             "G": GANLoss(),
         }
 
-    def forward(self, d, generated_d, kp_d):
-        output_d, _ = self.discriminator(d, kp_d)
-        output_gd, _ = self.discriminator(generated_d.detach(), kp_d)
+    def forward(self, d, generated_d, generated_c, kp_d):
+        
+        output_d, _ = self.discriminator.module.dis1(d, kp_d)
+        output_gd, _ = self.discriminator.module.dis1(generated_d.detach(), kp_d)
+
+        output_c, _ = self.discriminator.module.dis2(d)
+        output_gc, _ = self.discriminator.module.dis2(generated_c.detach())
+
         loss = {
             "G1": self.weights["G"] * self.losses["G"](output_gd, False, True),
             "G2": self.weights["G"] * self.losses["G"](output_d, True, True),
+            "G3": self.weights["G"] * self.losses["G"](output_gc, False, True),
+            "G4": self.weights["G"] * self.losses["G"](output_c, True, True),
         }
+
         return loss
