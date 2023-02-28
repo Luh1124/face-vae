@@ -178,9 +178,9 @@ class Logger:
                     losses = {}
                     losses.update(losses_g)
                     losses.update(losses_d)
-                    self.visualizer.writer_vis(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask, loss_dict={'index':self.epoch*len(self.dataloader) + idx,'epoch':self.epoch,'losess':losses})
+                    self.visualizer.writer_vis(x, (generated_d,generated_c), transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask, loss_dict={'index':self.epoch*len(self.dataloader) + idx,'epoch':self.epoch,'losess':losses})
         
-        self.log_epoch(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
+        self.log_epoch(x, (generated_d,generated_c), transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
         self.epoch += 1
 
 
@@ -227,6 +227,7 @@ class Visualizer:
     def visualize(self, x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask):
         images = []
         s, d, s_a, d_a = x
+        generated_d, generated_c = generated_d
         # Source image with keypoints
         source = s.data.cpu()
         kp_source = kp_s.data.cpu().numpy()[:, :, :2]
@@ -245,15 +246,15 @@ class Visualizer:
         images.append((transformed, transformed_kp))
 
         # Driving image with keypoints_neutral
-        kp_c_driving = kp_c.data.cpu().numpy()[:, :, :2]
-        driving = d.data.cpu().numpy()
-        driving = np.transpose(driving, [0, 2, 3, 1])
-        images.append((driving, kp_c_driving))
+        kp_c = kp_c.data.cpu().numpy()[:, :, :2]
+        g_c = generated_c.data.cpu().numpy()
+        g_c = np.transpose(g_c, [0, 2, 3, 1])
+        images.append((g_c, kp_c))
 
         # Driving image with keypoints
         kp_driving = kp_d.data.cpu().numpy()[:, :, :2]
-        # driving = d.data.cpu().numpy()
-        # driving = np.transpose(driving, [0, 2, 3, 1])
+        driving = d.data.cpu().numpy()
+        driving = np.transpose(driving, [0, 2, 3, 1])
         images.append((driving, kp_driving))
 
         # Result with and without keypoints
