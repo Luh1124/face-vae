@@ -309,7 +309,7 @@ class GeneratorFull(nn.Module):
 
 
         reverse_kp = transform.warp_coordinates(transformed_kp[:, :, :2])
-        # reverse_kp_c = transform.warp_coordinates(kp_c_tran[:, :, :2])
+        reverse_kp_c = transform.warp_coordinates(kp_c_tran[:, :, :2])
 
         deformation, occlusion, mask = self.mfe(fs, kp_s, kp_d, Rs, Rd)
         generated_d = self.generator(fs, deformation, occlusion)
@@ -319,8 +319,8 @@ class GeneratorFull(nn.Module):
             "P": self.weights["P"] * self.losses["P"](generated_d, d),
             "G": self.weights["G"] * self.losses["G"](output_gd, True, False),
             "F": self.weights["F"] * self.losses["F"](features_gd, features_d),
-            "E": self.weights["E"] * self.losses["E"](kp_d, reverse_kp),
-            # "E": self.weights["E"] * (self.losses["E"](kp_d, reverse_kp) + self.losses["E"](kp_c, reverse_kp_c)),
+            # "E": self.weights["E"] * self.losses["E"](kp_d, reverse_kp),
+            "E": self.weights["E"] * (self.losses["E"](kp_d, reverse_kp) + self.losses["E"](kp_c, reverse_kp_c)),
             "L": self.weights["L"] * self.losses["L"](kp_d),
             # "H": self.weights["H"] * self.losses["H"](yaw, pitch, roll, real_yaw, real_pitch, real_roll),
             # "D": self.weights["D"] * self.losses["D"](delta_d),
