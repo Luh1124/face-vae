@@ -1,5 +1,5 @@
 import argparse
-from models import EFE_conv5 as EFE
+from models import EFE_6 as EFE
 from models import AFE, CKD, HPE_EDE, MFE, Generator
 import numpy as np
 import torch
@@ -289,8 +289,8 @@ def demo(args):
             img_with_kp = img_with_kp.clip(0, 1)
             img_with_kp = (255 * img_with_kp).astype(np.uint8)
             # imageio.mimsave(args.output, output_frames)
-            os.makedirs(os.path.dirname(dri) + '_kp_out', exist_ok=True)
-            imageio.imwrite(os.path.dirname(dri) + '_kp_out' + '/' + f'{idx}_'+os.path.basename(dri) , img_with_kp)
+            os.makedirs(os.path.dirname(dri) + '_kp_out9', exist_ok=True)
+            imageio.imwrite(os.path.dirname(dri) + '_kp_out9' + '/' + f'{idx}_'+os.path.basename(dri) , img_with_kp)
         
         # os.makedirs(dirpath+'out', exist_ok=True)
         # out_path = os.path.join(dirpath+'out', filename)
@@ -301,9 +301,9 @@ if __name__ == "__main__":
     def str2bool(s):
         return s.lower().startswith("t")
 
-    parser.add_argument("--ckp_dir", type=str, default="ckp", help="Checkpoint dir")
+    parser.add_argument("--ckp_dir", type=str, default="ckp_1644_mainv9", help="Checkpoint dir")
     parser.add_argument("--output", type=str, default="output.gif", help="Output video")
-    parser.add_argument("--ckp", type=int, default=19, help="Checkpoint epoch")
+    parser.add_argument("--ckp", type=int, default=53, help="Checkpoint epoch")
     parser.add_argument("--source", type=str, default="./kp_d/d", help="Source image, f for face frontalization, r for reconstruction")
     parser.add_argument("--driving", type=str, default='./kp_s', help="Driving dir")
     parser.add_argument("--num_frames", type=int, default=90, help="Number of frames")
