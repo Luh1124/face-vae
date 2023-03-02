@@ -772,7 +772,7 @@ class EFE_conv5(nn.Module):
         x = x.view(N, self.C, self.D, H, W)
         x = self.up(x)
         x = self.out_conv(x) # [N K 16 64 64]
-        kpc_detach = kpc.detach()
+        kpc_detach = kpc
         xc = kp2gaussian_3d(kpc_detach, spatial_size=x.shape[2:])
         x = torch.cat((x, xc), dim=1)
         x = self.mix(x)
