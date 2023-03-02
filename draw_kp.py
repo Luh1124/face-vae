@@ -232,8 +232,10 @@ def demo(args):
         with torch.no_grad():
             hp.eval()
             yaw, pitch, roll = hp(F.interpolate(apply_imagenet_normalization(s), size=(224, 224)))
-        kp_s, Rs = transform_kp(kp_c, yaw, pitch, roll, t, scale)
-        kp_s, _, _, _, _ = g_models["efe"](s, None, kp_s, train_vae=False)
+        # kp_s, Rs = transform_kp(kp_c, yaw, pitch, roll, t, scale)
+        # kp_s, _, _, _, _ = g_models["efe"](s, None, kp_s)
+        delta_s, _, _, _, _ = g_models["efe"](s, None, kp_c)
+        kp_s, Rs = transform_kp(kp_c+delta_s, yaw, pitch, roll, t, scale)
         
         for dri in driving_paths:
             img = img_as_float32(io.imread(dri))[:, :, :3]
@@ -245,33 +247,40 @@ def demo(args):
                 yaw, pitch, roll = hp(F.interpolate(apply_imagenet_normalization(img), size=(224, 224)))
             
             # delta = delta
-            kp_d1, Rd = transform_kp(kp_c, yaw*0, pitch*0, roll*0, t*0, scale=1)
-            kp_d2, Rd = transform_kp(kp_c, yaw*0, pitch*0, roll*0, t*0, scale)
-            # kp_d2 = kp_d1 * -1
-            kp_d3, _, _, _, _ = g_models["efe"](img, None, kp_d2, train_vae=False)
-            
-            kp_d4, Rd = transform_kp(kp_c, yaw, pitch, roll, t, scale=-1)
-            kp_d5, _, _, _, _ = g_models["efe"](img, None, kp_d4, train_vae=False)
+            delta_d, _, _, _, _ = g_models["efe"](img, None, kp_c)
+            kp_d1 = kp_c
+            kp_d2 = kp_c + delta_d
+            kp_d3, Rd3 = transform_kp(kp_c + delta_d, yaw*0, pitch*0, roll*0, t*0, scale)
+            kp_d4, Rd4= transform_kp(kp_c + delta_d, yaw, pitch, roll, t*0, scale)
+            kp_d5, Rd5 = transform_kp(kp_c + delta_d, yaw, pitch, roll, t, scale)
+            kp_d6, Rd6 = transform_kp(kp_c, yaw, pitch, roll, t, scale)
+            kp_d7, Rd7 = kp_d6 + transform_kp(delta_d, yaw, pitch, roll, t*0, scale)[0], Rd6
+            kp_d8, Rd8 = transform_kp(kp_c + delta_d, yaw, pitch, roll, t, scale=1)
 
-            # kp_d6, Rd = transform_kp(kp_c, yaw, pitch, roll, t, scale=-1)
-            # kp_d7, _, _, _, _ = g_models["efe"](img, None, kp_d6, train_vae=False)
-            
-            kp_d6, Rd = transform_kp(kp_c, yaw*0, pitch*0, roll*0, t, scale)
-            kp_d7, Rd = transform_kp(kp_c, yaw, pitch, roll, t, scale)
-            kp_d8, _, _, _, _ = g_models["efe"](img, None, kp_c, train_vae=False)
-            # print(kp_c)
-            # print(scale)
-            # print(t)
-            # print(kp_d7 - kp_d7_old)
-            # print(Rd)
-            deformation, occlusion, mask = g_models["mfe"](fs, kp_s, kp_d8, Rs, Rd)
-            generated_d = g_models["generator"](fs, deformation, occlusion)
+            # deformation, occlusion, mask = g_models["mfe"](fs, kp_s, kp_d8, Rs, Rd)
+            # generated_d = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d1, Rs, Rd3)
+            generated_d1 = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d2, Rs, Rd3)
+            generated_d2 = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d3, Rs, Rd3)
+            generated_d3 = g_models["generator"](fs, deformation, occlusion)	
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d4, Rs, Rd4)
+            generated_d4 = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d5, Rs, Rd5)
+            generated_d5 = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d6, Rs, Rd6)
+            generated_d6 = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d7, Rs, Rd7)
+            generated_d7 = g_models["generator"](fs, deformation, occlusion)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d8, Rs, Rd8)
+            generated_d8 = g_models["generator"](fs, deformation, occlusion)
 
             s_np = s.data.cpu()
             kp_s_np = kp_s.data.cpu().numpy()[:, :, :2]
             s_np = np.transpose(s_np, [0, 2, 3, 1])
             img_np = img.data.cpu()
-            generated_d_np = generated_d.data.cpu()
+            # generated_d_np = generated_d.data.cpu()
 
             kp_d1_np = kp_d1.data.cpu().numpy()[:, :, :2]
             kp_d2_np = kp_d2.data.cpu().numpy()[:, :, :2]
@@ -283,8 +292,8 @@ def demo(args):
             kp_d8_np = kp_d8.data.cpu().numpy()[:, :, :2]
 
             img_np = np.transpose(img_np, [0, 2, 3, 1])
-            generated_d_np = np.transpose(generated_d_np, [0, 2, 3, 1])
-            img_with_kp = [(s_np, kp_s_np), (img_np, kp_d1_np), (img_np, kp_d2_np), (img_np, kp_d3_np), (img_np, kp_d4_np), (img_np, kp_d5_np), (img_np, kp_d6_np), (img_np, kp_d7_np), (img_np, kp_d8_np),generated_d_np]
+            # generated_d_np = np.transpose(generated_d_np, [0, 2, 3, 1])
+            img_with_kp = [(s_np, kp_s_np), (img_np, kp_d1_np), (img_np, kp_d2_np), (img_np, kp_d3_np), (img_np, kp_d4_np), (img_np, kp_d5_np), (img_np, kp_d6_np), (img_np, kp_d7_np), (img_np, kp_d8_np)]
             img_with_kp = vs.create_image_grid(*img_with_kp)
             img_with_kp = img_with_kp.clip(0, 1)
             img_with_kp = (255 * img_with_kp).astype(np.uint8)
@@ -294,6 +303,21 @@ def demo(args):
         
         # os.makedirs(dirpath+'out', exist_ok=True)
         # out_path = os.path.join(dirpath+'out', filename)
+            generated_d1_np = generated_d1.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d2_np = generated_d2.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d3_np = generated_d3.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d4_np = generated_d4.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d5_np = generated_d5.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d6_np = generated_d6.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d7_np = generated_d7.data.cpu().numpy().transpose([0, 2, 3, 1])
+            generated_d8_np = generated_d8.data.cpu().numpy().transpose([0, 2, 3, 1])
+            img_d = [(generated_d1_np, kp_d1_np), (generated_d2_np, kp_d2_np), (generated_d3_np, kp_d3_np), 
+                    (generated_d4_np, kp_d4_np), (generated_d5_np, kp_d5_np), (generated_d6_np, kp_d6_np),
+                    (generated_d7_np, kp_d7_np), (generated_d8_np, kp_d8_np)]
+
+            img_d = vs.create_image_grid(*img_d)
+            img_d = (255 * img_d).astype(np.uint8)
+            imageio.imwrite(os.path.dirname(dri) + '_kp_out9' + '/' + f'{idx}_d_'+os.path.basename(dri), img_d)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="face-vid2vid")
