@@ -750,8 +750,8 @@ class EFE_conv5(nn.Module):
         self.up = nn.Sequential(*[SameBlock3D(up_seq[i], up_seq[i + 1], use_weight_norm) if i==(len(up_seq)-2) else UpBlock3D(up_seq[i], up_seq[i + 1], use_weight_norm) for i in range(len(up_seq) - 1)])
         self.out_conv = nn.Conv3d(up_seq[-1], K, 3, 1, 1)
         # self.out_conv = nn.Conv3d(up_seq[-1], K, 7, 1, 3)
-        self.mix = nn.Sequential(*[ResBlock3D(K, use_weight_norm) for _ in range(n_res)])
-        self.mix_out = SameBlock3D(2*K, K, use_weight_norm)
+        # self.mix = nn.Sequential(*[ResBlock3D(K, use_weight_norm) for _ in range(n_res)])
+        # self.mix_out = SameBlock3D(K, K, use_weight_norm)
         self.C, self.D = up_seq[0], D
         self.scale_factor = scale_factor
         
@@ -775,8 +775,8 @@ class EFE_conv5(nn.Module):
         kpc_detach = kpc
         # xc = kp2gaussian_3d(kpc_detach, spatial_size=x.shape[2:])
         # x = torch.cat((x, xc), dim=1)
-        x = self.mix(x)
-        x = self.mix_out(x)
+        # x = self.mix(x)
+        # x = self.mix_out(x)
         # x = torch.nn.functional.tanh(x)
         heatmap = out2heatmap(x)
         # res kpc
