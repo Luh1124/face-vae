@@ -247,9 +247,9 @@ def demo(args):
             
             # delta = delta
             delta_d, _, _, _, _ = g_models["efe"](img, None, kp_c)
-            kp_d1 = kp_c
+            kp_d1, Rd1 = transform_kp(kp_c, yaw*0, pitch*0, roll*0, t*0, scale*1.2)
             kp_d2 = kp_c + delta_d
-            kp_d3, Rd3 = transform_kp(kp_c + delta_d, yaw*0, pitch*0, roll*0, t*0, scale)
+            kp_d3, Rd3 = transform_kp(kp_c + delta_d, yaw*0, pitch*0, roll*0, t*0, scale*1.2)
             kp_d4, Rd4= transform_kp(kp_c + delta_d, yaw, pitch, roll, t*0, scale)
             kp_d5, Rd5 = transform_kp(kp_c + delta_d, yaw, pitch, roll, t, scale)
             kp_d6, Rd6 = transform_kp(kp_c, yaw, pitch, roll, t, scale)
@@ -258,7 +258,7 @@ def demo(args):
 
             # deformation, occlusion, mask = g_models["mfe"](fs, kp_s, kp_d8, Rs, Rd)
             # generated_d = g_models["generator"](fs, deformation, occlusion)
-            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d1, Rs, Rd3)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d1, Rs, Rd1)
             generated_d1 = g_models["generator"](fs, deformation, occlusion)
             deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d2, Rs, Rd3)
             generated_d2 = g_models["generator"](fs, deformation, occlusion)
@@ -297,8 +297,8 @@ def demo(args):
             img_with_kp = img_with_kp.clip(0, 1)
             img_with_kp = (255 * img_with_kp).astype(np.uint8)
             # imageio.mimsave(args.output, output_frames)
-            os.makedirs(os.path.dirname(dri) + '_kp_out', exist_ok=True)
-            imageio.imwrite(os.path.dirname(dri) + '_kp_out' + '/' + f'{idx}_'+os.path.basename(dri) , img_with_kp)
+            os.makedirs(os.path.dirname(dri) + '_kp_out8.1', exist_ok=True)
+            imageio.imwrite(os.path.dirname(dri) + '_kp_out8.1' + '/' + f'{idx}_'+os.path.basename(dri) , img_with_kp)
         
         # os.makedirs(dirpath+'out', exist_ok=True)
         # out_path = os.path.join(dirpath+'out', filename)
@@ -316,7 +316,7 @@ def demo(args):
 
             img_d = vs.create_image_grid(*img_d)
             img_d = (255 * img_d).astype(np.uint8)
-            imageio.imwrite(os.path.dirname(dri) + '_kp_out' + '/' + f'{idx}_d_'+os.path.basename(dri), img_d)
+            imageio.imwrite(os.path.dirname(dri) + '_kp_out8.1' + '/' + f'{idx}_d_'+os.path.basename(dri), img_d)
 
             
 
@@ -326,10 +326,10 @@ if __name__ == "__main__":
     def str2bool(s):
         return s.lower().startswith("t")
 
-    parser.add_argument("--ckp_dir", type=str, default="ckp_1644_main8.1", help="Checkpoint dir")
+    parser.add_argument("--ckp_dir", type=str, default="ckp_1644_mainv8.1-nodetach-dl2", help="Checkpoint dir")
     parser.add_argument("--output", type=str, default="output.gif", help="Output video")
-    parser.add_argument("--ckp", type=int, default=10, help="Checkpoint epoch")
-    parser.add_argument("--source", type=str, default="./kp_d/d", help="Source image, f for face frontalization, r for reconstruction")
+    parser.add_argument("--ckp", type=int, default=104, help="Checkpoint epoch")
+    parser.add_argument("--source", type=str, default="./kp_s", help="Source image, f for face frontalization, r for reconstruction")
     parser.add_argument("--driving", type=str, default='./kp_s', help="Driving dir")
     parser.add_argument("--num_frames", type=int, default=90, help="Number of frames")
 
