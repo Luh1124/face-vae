@@ -163,7 +163,8 @@ class AudioDataset(Dataset):
     ):
         self.root_dir = root_dir
         self.audio_dir = os.path.join(root_dir,'mfcc')
-        self.image_dir = os.path.join(root_dir,'Image')
+        # self.image_dir = os.path.join(root_dir,'Image')
+        self.image_dir = os.path.join(root_dir,'pngs')
         self.pose_dir = os.path.join(root_dir,'pose')
 
         self.frame_shape = tuple(frame_shape)
@@ -203,10 +204,12 @@ class AudioDataset(Dataset):
 
 
         video_name = self.videos[idx]
-        video_array = read_video(video_name, self.frame_shape)
+        # video_array = read_video(video_name, self.frame_shape)
+        video_array = sorted(os.listdir(video_name, self.frame_shape))
+        
 
         num_frames = len(video_array)
-        frame_idx = np.sort(np.random.choice(range(3, num_frames-3), replace=True, size=2))
+        frame_idx = np.sort(np.random.choice(range(4, num_frames-4), replace=True, size=2))
         # video_array = video_array[frame_idx]
 
         basename = os.path.basename(video_name).split('.')[0]
