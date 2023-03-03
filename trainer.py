@@ -332,7 +332,8 @@ class GeneratorFull(nn.Module):
         loss = {
             "P": self.weights["P"] * self.losses["P"](generated_d, d),
             "G": self.weights["G"] * (self.losses["G"](output_gd, True, False) + self.losses["G"](output_gc, True, False)),
-            "F": self.weights["F"] * (self.losses["F"](features_gd, features_d) + self.losses["F"](features_gc, features_d2)),
+            # "F": self.weights["F"] * (self.losses["F"](features_gd, features_d) + self.losses["F"](features_gc, features_d2)),
+            "F": self.weights["F"] * self.losses["F"](features_gd, features_d),
             "E": self.weights["E"] * (self.losses["E"](kp_d, reverse_kp) + self.losses["E"](kp_c, reverse_kp_c)),
             "L": self.weights["L"] * (self.losses["L"](kp_d) + self.losses["L"](kp_c)),
             # "H": self.weights["H"] * self.losses["H"](yaw, pitch, roll, real_yaw, real_pitch, real_roll),
