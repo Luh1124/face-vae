@@ -139,8 +139,8 @@ class Logger:
         master_only_print("Epoch", self.epoch)
         with tqdm(total=len(self.dataloader)) as progress_bar:
             for idx, x in enumerate(self.dataloader):
-                if idx > 20:
-                    break
+                # if idx > 20:
+                #     break
                 # s, d, s_a, d_a = x['source'], x['driving'],x['source_aug'],x['driving_aug']
                 s, d, s_a, d_a = x
                 
@@ -177,7 +177,7 @@ class Logger:
                 if is_master():
                     progress_bar.update(1)
                 
-                if idx % 5 ==0:
+                if idx == 300:
                     losses = {}
                     losses.update(losses_g)
                     losses.update(losses_d)
