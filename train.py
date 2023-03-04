@@ -17,7 +17,9 @@ def main(proc, args):
         trainset = AudioDataset(root_dir=args.root_dir)
     trainsampler = data.distributed.DistributedSampler(trainset)
     trainloader = data.DataLoader(trainset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=trainsampler, drop_last=True)
-    logger = Logger(args.ckp_dir, args.vis_dir, trainloader, args.lr, log_file_name=args.log_file)
+    # visdom_params = {"server":args.display_server,"port":args.display_port,"env":args.display_env}
+    visualizer_params={"kp_size": 5, "draw_border": True, "colormap": "gist_rainbow", "writer_use": False, "writer_name":'running', "visdom_params":{"server":args.display_server,"port":args.display_port,"env":args.display_env}}
+    logger = Logger(args.ckp_dir, args.vis_dir, trainloader, args.lr, log_file_name=args.log_file, visualizer_params=visualizer_params)
     if args.ckp > 0:
         logger.load_cpk(args.ckp)
     for i in range(args.num_epochs):
@@ -45,8 +47,16 @@ if __name__ == "__main__":
     parser.add_argument("--root_dir", type=str, default="/home/lh/repo/datasets/face-video-preprocessing/vox-png", help="data_path")
     parser.add_argument("--data_name", type=str, default="lrw", help="data_name")
 
+    parser.add_argument("--display_server", type=str, default="130134.46.41", help="data_name")
+    parser.add_argument("--display_env", type=str, default="my_voxceleb_", help="data_name")
+    parser.add_argument("--display_port", type=int, default=8098, help="data_name")
+    # parser.add_argument("--display_winsize", type=int, default=256, help="data_name")
+    # parser.add_argument("--display_ncols", type=int, default=3, help="data_name")
+
+
     args = parser.parse_args()
 
+    args.display_env = args.display_env + args.ext
     args.ckp_dir = args.ckp_dir + args.ext
     args.vis_dir = args.vis_dir + args.ext
     args.log_file = args.log_file + args.ext + '.txt'

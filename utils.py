@@ -156,8 +156,8 @@ def create_sparse_motions(fs, kp_s, kp_d, Rs, Rd):
     # [N,20,16,64,64,3]
     coordinate_grid = identity_grid.repeat(1, K, 1, 1, 1, 1) - kp_d.view(N, K, 1, 1, 1, 3)
     # [N,1,1,1,1,3,3]
-    jacobian = torch.matmul(Rs, torch.inverse(Rd)).unsqueeze(-3).unsqueeze(-3).unsqueeze(-3).unsqueeze(-3)
-    coordinate_grid = torch.matmul(jacobian, coordinate_grid.unsqueeze(-1)).squeeze(-1)
+    # jacobian = torch.matmul(Rs, torch.inverse(Rd)).unsqueeze(-3).unsqueeze(-3).unsqueeze(-3).unsqueeze(-3)
+    # coordinate_grid = torch.matmul(jacobian, coordinate_grid.unsqueeze(-1)).squeeze(-1)
     driving_to_source = coordinate_grid + kp_s.view(N, K, 1, 1, 1, 3)
     sparse_motions = torch.cat([identity_grid, driving_to_source], dim=1)
     # sparse_motions = driving_to_source

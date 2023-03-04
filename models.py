@@ -177,7 +177,7 @@ class EFE_lin_conv(nn.Module):
         # x = self.mix_out(x)
         # heatmap = out2heatmap(x)
 
-        x = F.tanh(x)
+        x = torch.tanh(x)
         kp = x.view(-1, self.K, 3)
         # res kpc
         # kp = heatmap2kp(heatmap) + kpc
@@ -1038,7 +1038,7 @@ class EFE_6(nn.Module):
     def __init__(self, use_weight_norm=False, n_filters=[64, 64, 128, 128, 256, 16], 
         n_blocks=[3, 3, 5, 2, 2], K=15, 
         use_kpc=True,
-        # weight=0.2
+        weight=0.5
         ):
         super().__init__()
         self.pre_layers = nn.Sequential(ConvBlock2D("CNA", 3, n_filters[0], 7, 2, 3, use_weight_norm), nn.MaxPool2d(3, 2, 1))
@@ -1061,7 +1061,7 @@ class EFE_6(nn.Module):
                                     nn.ReLU())
                                     
         self.fc_delta = nn.Linear(256, K*3)
-        # self.weight = weight
+        self.weight = weight
 
     def _make_layer(self, i, in_channels, out_channels, n_block, use_weight_norm):
         stride = 1 if i == 0 else 2
@@ -1080,8 +1080,8 @@ class EFE_6(nn.Module):
         else:
             x_en = x_en
         feature = self.fc_map(x_en)
-        # delta = F.tanh(self.fc_delta(feature))*self.weight
-        delta = self.fc_delta(feature)
+        delta = torch.tanh(self.fc_delta(feature))*self.weight
+        # delta = self.fc_delta(feature)
 
         return delta.view(delta.shape[0], -1, 3)
 

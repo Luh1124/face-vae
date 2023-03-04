@@ -16,6 +16,8 @@ from models import AFE, CKD, HPE_EDE, MFE, Generator, Discriminator
 from trainer import GeneratorFull, DiscriminatorFull
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
+import visdom
+
 
 def to_cpu(losses):
     return {key: value.detach().data.cpu().numpy() for key, value in losses.items()}
@@ -29,7 +31,7 @@ class Logger:
         dataloader,
         lr,
         checkpoint_freq=1,
-        visualizer_params={"kp_size": 5, "draw_border": True, "colormap": "gist_rainbow", "writer_use": False, "writer_name":'running'},
+        visualizer_params={"kp_size": 5, "draw_border": True, "colormap": "gist_rainbow", "writer_use": False, "writer_name":'running', "visdom_params":None},
         zfill_num=8,
         log_file_name="log_1644_final.txt",
     ):
@@ -45,6 +47,7 @@ class Logger:
             self.log_file = open(log_file_name, "a")
         self.zfill_num = zfill_num
         self.visualizer = Visualizer(**visualizer_params)
+
         self.checkpoint_freq = checkpoint_freq
         self.epoch = 0
         self.best_loss = float("inf")
@@ -136,8 +139,8 @@ class Logger:
         master_only_print("Epoch", self.epoch)
         with tqdm(total=len(self.dataloader)) as progress_bar:
             for idx, x in enumerate(self.dataloader):
-                # if idx > 400:
-                #     break
+                if idx > 20:
+                    break
                 # s, d, s_a, d_a = x['source'], x['driving'],x['source_aug'],x['driving_aug']
                 s, d, s_a, d_a = x
                 
@@ -174,18 +177,23 @@ class Logger:
                 if is_master():
                     progress_bar.update(1)
                 
-                if idx % 50 ==0 and get_rank() == 0:
+                if idx % 5 ==0:
                     losses = {}
                     losses.update(losses_g)
                     losses.update(losses_d)
-                    self.visualizer.writer_vis(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask, loss_dict={'index':self.epoch*len(self.dataloader) + idx,'epoch':self.epoch,'losess':losses})
+                    self.visualizer.writer_vis(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, 
+                                               occlusion, mask, 
+                                               loss_dict={'index':float(idx/len(self.dataloader)),
+                                                          'epoch':self.epoch,
+                                                          'losess':losses})
         
         self.log_epoch(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
         self.epoch += 1
 
-
 class Visualizer:
-    def __init__(self, kp_size=5, draw_border=False, colormap="gist_rainbow", writer_use=False, writer_name=None):
+
+    @master_only
+    def __init__(self, kp_size=5, draw_border=False, colormap="gist_rainbow", writer_use=False, writer_name=None, visdom_params=None):
         self.kp_size = kp_size
         self.draw_border = draw_border
         self.colormap = plt.get_cmap(colormap)
@@ -194,6 +202,10 @@ class Visualizer:
         if writer_use:
             from tensorboardX import SummaryWriter
             self.writer=SummaryWriter(comment=writer_name)
+        if visdom_params:
+            self.vis = visdom.Visdom(raise_exceptions=True,**visdom_params)
+            self.display_id=0
+            self.updatetextwindow = self.vis.text('Hello losses! More text should be here')
     def draw_image_with_kp(self, image, kp_array):
         image = np.copy(image)
         spatial_size = np.array(image.shape[:2][::-1])[np.newaxis]
@@ -293,7 +305,8 @@ class Visualizer:
         image = image.clip(0, 1)
         image = (255 * image).astype(np.uint8)
         return image
-
+    
+    @master_only
     def writer_vis(self, x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask, loss_dict = None):
         image = self.visualize(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
         if self.writer is not None:
@@ -308,3 +321,27 @@ class Visualizer:
                 loss_string = "; ".join(["%s - %.5f" % (name, value) for name, value in loss_dict['losess'].items()])
                 loss_string = str(epoch).zfill(8) + ") " + loss_string
                 self.writer.add_text('log', loss_string, index)
+        if self.vis is not None:
+            epoch = loss_dict['epoch']
+            self.vis.image(image.transpose([2, 0, 1]), opts=dict(title=str(epoch)),
+                           win=self.display_id)
+            # index = loss_dict['index']
+            # if not hasattr(self, 'plot_data'):
+            #     self.plot_data = {'X': [], 'Y': [], 'legend': list(loss_dict['losess'].keys())}
+            #     self.plot_data['X']= epoch+index
+            #     self.plot_data['Y']= [loss_dict['losess'][k].detach().data.cpu().numpy() for k in self.plot_data['legend']]
+            
+            # self.vis.line(
+            #     X=np.stack([np.array(self.plot_data['X'])] * len(self.plot_data['legend'])),
+            #     Y=np.array(self.plot_data['Y']),
+            #     update='append',  # 以添加方式加入
+            #     opts={
+            #         'title': 'loss over time',
+            #         'legend': self.plot_data['legend'],
+            #         'xlabel': 'index',
+            #         'ylabel': 'loss'},
+            #     win=self.display_id+1
+            #     )
+            loss_string = "; ".join(["%s - %.5f" % (name, value) for name, value in loss_dict['losess'].items()])
+            loss_string = str(epoch).zfill(8) + ") " + loss_string
+            self.vis.text(loss_string, win=self.updatetextwindow, append=True)
