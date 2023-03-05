@@ -102,11 +102,11 @@ class FramesDataset(Dataset):
         video_name = os.path.basename(path)
 
         if self.is_train and os.path.isdir(path):
-            frames = os.listdir(path+"/img")
+            frames = os.listdir(path)
             num_frames = len(frames)
             
             frame_idx = np.sort(np.random.choice(num_frames, replace=True, size=2))
-            video_array = [img_as_float32(io.imread(os.path.join(path, "img", str(frames[idx])))) for idx in frame_idx]
+            video_array = [img_as_float32(io.imread(os.path.join(path, str(frames[idx])))) for idx in frame_idx]
             # video_array = [img_as_float32(io.imread(os.path.join(path, str(frames[idx], encoding="utf-8")))) for idx in frame_idx]
 
             
