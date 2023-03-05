@@ -192,7 +192,7 @@ class Logger:
 
 class Visualizer:
 
-    @master_only
+    # @master_only
     def __init__(self, kp_size=5, draw_border=False, colormap="gist_rainbow", writer_use=False, writer_name=None, visdom_params=None):
         self.kp_size = kp_size
         self.draw_border = draw_border
