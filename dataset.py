@@ -106,7 +106,7 @@ class FramesDataset(Dataset):
             num_frames = len(frames)
             
             frame_idx = np.sort(np.random.choice(num_frames, replace=True, size=2))
-            video_array = [img_as_float32(io.imread(os.path.join(path, str(frames[idx])))) for idx in frame_idx]
+            video_array = [img_as_float32(io.imread(os.path.join(path, "img", str(frames[idx])))) for idx in frame_idx]
             # video_array = [img_as_float32(io.imread(os.path.join(path, str(frames[idx], encoding="utf-8")))) for idx in frame_idx]
 
             
