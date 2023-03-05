@@ -102,7 +102,7 @@ class FramesDataset(Dataset):
         video_name = os.path.basename(path)
 
         if self.is_train and os.path.isdir(path):
-            frames = os.listdir(path)
+            frames = os.listdir(path+"/img")
             num_frames = len(frames)
             try:
                 frame_idx = np.sort(np.random.choice(num_frames, replace=True, size=2))
