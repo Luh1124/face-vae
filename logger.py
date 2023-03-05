@@ -200,7 +200,7 @@ class Visualizer:
         self.draw_border = draw_border
         self.colormap = plt.get_cmap(colormap)
         self.writer = None
-        self.visdom = None
+        self.vis = None
         if writer_use:
             from tensorboardX import SummaryWriter
             self.writer=SummaryWriter(comment=writer_name)
