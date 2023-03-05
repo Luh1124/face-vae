@@ -31,7 +31,7 @@ class Logger:
         dataloader,
         lr,
         checkpoint_freq=1,
-        visualizer_params={"kp_size": 5, "draw_border": True, "colormap": "gist_rainbow", "writer_use": False, "writer_name":'running', "visdom_params":None},
+        visualizer_params={"kp_size": 5, "draw_border": True, "colormap": "gist_rainbow", "writer_use": False, "writer_name":'running', "use_visdom": False, "visdom_params":None},
         zfill_num=8,
         log_file_name="log_1644_final.txt",
     ):
@@ -55,12 +55,12 @@ class Logger:
         self.g_models = {"efe": EFE(), "afe": AFE(), "ckd": CKD(), "hpe_ede": HPE_EDE(), "mfe": MFE(), "generator": Generator()}
         self.d_models = {"discriminator": Discriminator()}
         for name, model in self.g_models.items():
-            # self.g_models[name] = torch.nn.parallel.DistributedDataParallel(torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda(), device_ids=[get_rank()])
-            self.g_models[name] = torch.nn.parallel.DistributedDataParallel(model.cuda(), device_ids=[get_rank()])
+            self.g_models[name] = torch.nn.parallel.DistributedDataParallel(torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda(), device_ids=[get_rank()])
+            # self.g_models[name] = torch.nn.parallel.DistributedDataParallel(model.cuda(), device_ids=[get_rank()])
 
         for name, model in self.d_models.items():
-            # self.d_models[name] = torch.nn.parallel.DistributedDataParallel(torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda(), device_ids=[get_rank()])
-            self.d_models[name] = torch.nn.parallel.DistributedDataParallel(model.cuda(), device_ids=[get_rank()])
+            self.d_models[name] = torch.nn.parallel.DistributedDataParallel(torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda(), device_ids=[get_rank()])
+            # self.d_models[name] = torch.nn.parallel.DistributedDataParallel(model.cuda(), device_ids=[get_rank()])
             
         self.g_optimizers = {name: torch.optim.Adam(self.g_models[name].parameters(), lr=lr, betas=(0.5, 0.999)) for name in self.g_models.keys()}
         self.d_optimizers = {name: torch.optim.Adam(self.d_models[name].parameters(), lr=lr, betas=(0.5, 0.999)) for name in self.d_models.keys()}
@@ -195,7 +195,7 @@ class Logger:
 class Visualizer:
 
     # @master_only
-    def __init__(self, kp_size=5, draw_border=False, colormap="gist_rainbow", writer_use=False, writer_name=None, visdom_params=None):
+    def __init__(self, kp_size=5, draw_border=False, colormap="gist_rainbow", writer_use=False, writer_name=None, use_visdom=False, visdom_params=None):
         self.kp_size = kp_size
         self.draw_border = draw_border
         self.colormap = plt.get_cmap(colormap)
@@ -204,7 +204,7 @@ class Visualizer:
         if writer_use:
             from tensorboardX import SummaryWriter
             self.writer=SummaryWriter(comment=writer_name)
-        if visdom_params:
+        if use_visdom:
             self.vis = visdom.Visdom(raise_exceptions=True,**visdom_params)
             self.display_id=0
             self.updatetextwindow = self.vis.text('Hello losses! More text should be here')
@@ -308,7 +308,7 @@ class Visualizer:
         image = (255 * image).astype(np.uint8)
         return image
     
-    @master_only
+    # @master_only
     def writer_vis(self, x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask, loss_dict = None):
         image = self.visualize(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
         if self.writer is not None:
