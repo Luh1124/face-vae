@@ -55,10 +55,12 @@ class Logger:
         self.g_models = {"efe": EFE(), "afe": AFE(), "ckd": CKD(), "hpe_ede": HPE_EDE(), "mfe": MFE(), "generator": Generator()}
         self.d_models = {"discriminator": Discriminator()}
         for name, model in self.g_models.items():
-            self.g_models[name] = torch.nn.parallel.DistributedDataParallel(torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda(), device_ids=[get_rank()])
+            # self.g_models[name] = torch.nn.parallel.DistributedDataParallel(torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda(), device_ids=[get_rank()])
+            self.g_models[name] = torch.nn.parallel.DistributedDataParallel(model.cuda(), device_ids=[get_rank()])
 
         for name, model in self.d_models.items():
-            self.d_models[name] = torch.nn.parallel.DistributedDataParallel(torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda(), device_ids=[get_rank()])
+            # self.d_models[name] = torch.nn.parallel.DistributedDataParallel(torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda(), device_ids=[get_rank()])
+            self.d_models[name] = torch.nn.parallel.DistributedDataParallel(model.cuda(), device_ids=[get_rank()])
             
         self.g_optimizers = {name: torch.optim.Adam(self.g_models[name].parameters(), lr=lr, betas=(0.5, 0.999)) for name in self.g_models.keys()}
         self.d_optimizers = {name: torch.optim.Adam(self.d_models[name].parameters(), lr=lr, betas=(0.5, 0.999)) for name in self.d_models.keys()}
