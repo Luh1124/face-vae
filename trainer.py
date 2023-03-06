@@ -248,7 +248,7 @@ class GeneratorFull(nn.Module):
             # "H": 20,
             "D": 5,
             # "D": 10,
-            "C": 10,
+            # "C": 10,
             # "K": 0, # 0.2
             # "R": 0 # 10
             "I": 2,
@@ -261,7 +261,7 @@ class GeneratorFull(nn.Module):
             "L": KeypointPriorLoss(),
             # "H": HeadPoseLoss(),
             "D": DeformationPriorLoss(),
-            "C": torch.nn.SyncBatchNorm.convert_sync_batchnorm(ContrastiveLoss(mode="direction")).cuda(),
+            # "C": torch.nn.SyncBatchNorm.convert_sync_batchnorm(ContrastiveLoss(mode="direction")).cuda(),
             # "K": KLDivergenceLoss(),
             # "R": ReconLoss()
             "I": IdLoss(),
@@ -300,7 +300,7 @@ class GeneratorFull(nn.Module):
         # transformed_kp, _, _, _, _ = self.efe(transformed_d, None, transformed_kp_old)
         
         delta_s, x_c_s, x_a_c_s, x_kl_s, x_l2_s = self.efe(s, None, kp_c)
-        delta_d, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_c)
+        delta_d, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, None, kp_c)
 
         delta_tran, _, _, _, _ = self.efe(transformed_d, None, kp_c_tran)
         
@@ -324,7 +324,7 @@ class GeneratorFull(nn.Module):
             # "H": self.weights["H"] * self.losses["H"](yaw, pitch, roll, real_yaw, real_pitch, real_roll),
             # "D": self.weights["D"] * self.losses["D"](delta_d),
             "D": self.weights["D"] * self.losses["D"](delta_d),
-            "C": torch.Tensor([0.0]).cuda() if x_c_d is None else self.weights["C"] * self.losses["C"](x_c_d, x_a_c_d),
+            # "C": torch.Tensor([0.0]).cuda() if x_c_d is None else self.weights["C"] * self.losses["C"](x_c_d, x_a_c_d),
             "I": self.weights["I"] * self.losses["I"]((kp_c, kp_c_d)),
         }
         return loss, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask
