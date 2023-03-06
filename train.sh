@@ -7,4 +7,4 @@
 # python train.py --batch_size=2 --gpu_ids=0,1 --ext=mainv7_lrw --data_name='lrw' --root_dir='/home/luh/lh_8T/datasets/LRW_Data/LRW_Temp' 
 # python train.py --batch_size=8 --gpu_ids=0,1,2,3 --ext=mainv8.2-dl10 --data_name='vox' --root_dir='/home/lh/repo/datasets/vox-png' 
 # python train.py --batch_size=10 --gpu_ids=0,1,2,3 --ext=mainv9-dl5-lkpc-notanh --data_name='vox' --root_dir='/home/lh/repo/datasets/vox-png' 
-python train.py --batch_size=4 --gpu_ids=0,1,2,3,4,5,6,7 --ext=mainv9notan-ll-noC --data_name='vox' --root_dir= '/home/momobot/repo/code/2.faceanaimation/dataset/vox1/vox-png' 
+python train.py --batch_size=4 --gpu_ids=0,1,2,3,4,5,6,7 --ext=mainv9notan-ll-noC --data_name='vox' --root_dir='/home/momobot/repo/code/2.faceanaimation/dataset/vox1/vox-png' 
