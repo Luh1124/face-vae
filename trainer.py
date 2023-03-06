@@ -248,7 +248,7 @@ class GeneratorFull(nn.Module):
             # "H": 20,
             "D": 5,
             # "D": 10,
-            "C": 10,
+            "C": 20,
             # "K": 0, # 0.2
             # "R": 0 # 10
             "I": 2,
@@ -308,7 +308,7 @@ class GeneratorFull(nn.Module):
         kp_d, Rd = transform_kp(kp_c+delta_d, yaw_d, pitch_d, roll_d, t_d, scale_d)
         transformed_kp, _ = transform_kp(kp_c_tran+delta_tran, yaw_tran, pitch_tran, roll_tran, t_tran, scale_tran)
 
-        reverse_kp_c = transform.warp_coordinates(kp_c_tran[:, :, :2])
+        # reverse_kp_c = transform.warp_coordinates(kp_c_tran[:, :, :2])
         reverse_kp = transform.warp_coordinates(transformed_kp[:, :, :2])
         
         deformation, occlusion, mask = self.mfe(fs, kp_s, kp_d, Rs, Rd)
@@ -319,8 +319,9 @@ class GeneratorFull(nn.Module):
             "P": self.weights["P"] * self.losses["P"](generated_d, d),
             "G": self.weights["G"] * self.losses["G"](output_gd, True, False),
             "F": self.weights["F"] * self.losses["F"](features_gd, features_d),
-            "E": self.weights["E"] * (self.losses["E"](kp_d, reverse_kp) + self.losses["E"](kp_c, reverse_kp_c)),
-            "L": self.weights["L"] * (self.losses["L"](kp_d)+self.losses["L"](kp_c)),
+            # "E": self.weights["E"] * (self.losses["E"](kp_d, reverse_kp) + self.losses["E"](kp_c, reverse_kp_c)),
+            "E": self.weights["E"] * self.losses["E"](kp_d, reverse_kp),
+            "L": self.weights["L"] * (self.losses["L"](kp_d) + self.losses["L"](kp_c)),
             # "H": self.weights["H"] * self.losses["H"](yaw, pitch, roll, real_yaw, real_pitch, real_roll),
             # "D": self.weights["D"] * self.losses["D"](delta_d),
             "D": self.weights["D"] * self.losses["D"](delta_d),
