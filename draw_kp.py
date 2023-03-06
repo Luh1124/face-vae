@@ -245,9 +245,9 @@ def demo(args):
             with torch.no_grad():
                 hp.eval()
                 yaw, pitch, roll = hp(F.interpolate(apply_imagenet_normalization(img), size=(224, 224)))
-            
+                kp_c_d = g_models["ckd"](img)
             # delta = delta
-            delta_d, _, _, _, _ = g_models["efe"](img, None, kp_c)
+            delta_d, _, _, _, _ = g_models["efe"](img, None, kp_c_d)
             kp_d1 = kp_c
             kp_d2 = kp_c + delta_d
             kp_d3, Rd3 = transform_kp(kp_c + delta_d, yaw*0, pitch*0, roll*0, t*0, scale)
@@ -298,8 +298,8 @@ def demo(args):
             img_with_kp = img_with_kp.clip(0, 1)
             img_with_kp = (255 * img_with_kp).astype(np.uint8)
             # imageio.mimsave(args.output, output_frames)
-            os.makedirs(os.path.dirname(dri) + '_kp_out9', exist_ok=True)
-            imageio.imwrite(os.path.dirname(dri) + '_kp_out9' + '/' + f'{idx}_'+os.path.basename(dri) , img_with_kp)
+            os.makedirs(os.path.dirname(dri) + '_kp_out9nojad', exist_ok=True)
+            imageio.imwrite(os.path.dirname(dri) + '_kp_out9nojad' + '/' + f'{idx}_'+os.path.basename(dri) , img_with_kp)
         
         # os.makedirs(dirpath+'out', exist_ok=True)
         # out_path = os.path.join(dirpath+'out', filename)
@@ -311,13 +311,14 @@ def demo(args):
             generated_d6_np = generated_d6.data.cpu().numpy().transpose([0, 2, 3, 1])
             generated_d7_np = generated_d7.data.cpu().numpy().transpose([0, 2, 3, 1])
             generated_d8_np = generated_d8.data.cpu().numpy().transpose([0, 2, 3, 1])
-            img_d = [(generated_d1_np, kp_d1_np), (generated_d2_np, kp_d2_np), (generated_d3_np, kp_d3_np), 
+            img_d = [(s_np, kp_s_np),
+                    (generated_d1_np, kp_d1_np), (generated_d2_np, kp_d2_np), (generated_d3_np, kp_d3_np), 
                     (generated_d4_np, kp_d4_np), (generated_d5_np, kp_d5_np), (generated_d6_np, kp_d6_np),
                     (generated_d7_np, kp_d7_np), (generated_d8_np, kp_d8_np)]
 
             img_d = vs.create_image_grid(*img_d)
             img_d = (255 * img_d).astype(np.uint8)
-            imageio.imwrite(os.path.dirname(dri) + '_kp_out9' + '/' + f'{idx}_d_'+os.path.basename(dri), img_d)
+            imageio.imwrite(os.path.dirname(dri) + '_kp_out9nojad' + '/' + f'{idx}_d_'+os.path.basename(dri), img_d)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="face-vid2vid")
@@ -325,11 +326,11 @@ if __name__ == "__main__":
     def str2bool(s):
         return s.lower().startswith("t")
 
-    parser.add_argument("--ckp_dir", type=str, default="ckp_1644_mainv9", help="Checkpoint dir")
+    parser.add_argument("--ckp_dir", type=str, default="ckp_1644_mainv9notan-ll-noja", help="Checkpoint dir")
     parser.add_argument("--output", type=str, default="output.gif", help="Output video")
-    parser.add_argument("--ckp", type=int, default=53, help="Checkpoint epoch")
-    parser.add_argument("--source", type=str, default="./kp_s", help="Source image, f for face frontalization, r for reconstruction")
-    parser.add_argument("--driving", type=str, default='./kp_s', help="Driving dir")
+    parser.add_argument("--ckp", type=int, default=48, help="Checkpoint epoch")
+    parser.add_argument("--source", type=str, default="./kp_s copy", help="Source image, f for face frontalization, r for reconstruction")
+    parser.add_argument("--driving", type=str, default='./kp_s copy', help="Driving dir")
     parser.add_argument("--num_frames", type=int, default=90, help="Number of frames")
 
     args = parser.parse_args()
