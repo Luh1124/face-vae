@@ -1046,6 +1046,9 @@ class EFE_6(nn.Module):
         for i in range(len(n_filters) - 1):
             res_layers.extend(self._make_layer(i, n_filters[i], n_filters[i + 1], n_blocks[i], use_weight_norm))
         self.res_layers = nn.Sequential(*res_layers)
+        self.hidden = nn.Sequential(nn.Linear(n_filters[-1] * 4 * 4, n_filters[-1] * 4 * 4), 
+                                    nn.BatchNorm1d(n_filters[-1] * 4 * 4),
+                                    nn.Tanh())
         # self.fc_yaw = nn.Linear(n_filters[-1], n_bins)
         # self.fc_pitch = nn.Linear(n_filters[-1], n_bins)
         # self.fc_roll = nn.Linear(n_filters[-1], n_bins)
@@ -1053,7 +1056,7 @@ class EFE_6(nn.Module):
 
         cat_channels = K*3 if use_kpc else 0
         
-        self.fc_map = nn.Sequential(nn.Linear(n_filters[-1]*4*4 + cat_channels, 512), 
+        self.fc_map = nn.Sequential(nn.Linear(n_filters[-1] * 4 * 4 + cat_channels, 512), 
                                     nn.BatchNorm1d(512),
                                     nn.ReLU(),
                                     nn.Linear(512, 256),
@@ -1072,7 +1075,8 @@ class EFE_6(nn.Module):
     def encode(self, x):
         x = self.pre_layers(x)
         x = self.res_layers(x)
-        return x.flatten(1)
+        x = self.hidden(x.flatten(1))
+        return x
 
     def decode(self, x_en, kpc=None):
         if kpc is not None:
