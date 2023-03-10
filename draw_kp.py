@@ -299,8 +299,8 @@ def demo(args):
             img_with_kp = img_with_kp.clip(0, 1)
             img_with_kp = (255 * img_with_kp).astype(np.uint8)
             # imageio.mimsave(args.output, output_frames)
-            os.makedirs(os.path.dirname(dri) + '_kp_out9notanh77', exist_ok=True)
-            imageio.imwrite(os.path.dirname(dri) + '_kp_out9notanh77' + '/' + f'{idx}_'+os.path.basename(dri) , img_with_kp)
+            os.makedirs(os.path.dirname(dri) + '_kp_out9notanh85', exist_ok=True)
+            imageio.imwrite(os.path.dirname(dri) + '_kp_out9notanh85' + '/' + f'{idx}_'+os.path.basename(dri) , img_with_kp)
         
         # os.makedirs(dirpath+'out', exist_ok=True)
         # out_path = os.path.join(dirpath+'out', filename)
@@ -319,7 +319,7 @@ def demo(args):
 
             img_d = vs.create_image_grid(*img_d)
             img_d = (255 * img_d).astype(np.uint8)
-            imageio.imwrite(os.path.dirname(dri) + '_kp_out9notanh77' + '/' + f'{idx}_d_'+os.path.basename(dri), img_d)
+            imageio.imwrite(os.path.dirname(dri) + '_kp_out9notanh85' + '/' + f'{idx}_d_'+os.path.basename(dri), img_d)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="face-vid2vid")
@@ -329,9 +329,9 @@ if __name__ == "__main__":
 
     parser.add_argument("--ckp_dir", type=str, default="ckp_1644_mainv9-dl5-lkpc-notanh", help="Checkpoint dir")
     parser.add_argument("--output", type=str, default="output.gif", help="Output video")
-    parser.add_argument("--ckp", type=int, default=77, help="Checkpoint epoch")
-    parser.add_argument("--source", type=str, default="./kp_s copy", help="Source image, f for face frontalization, r for reconstruction")
-    parser.add_argument("--driving", type=str, default='./kp_s copy', help="Driving dir")
+    parser.add_argument("--ckp", type=int, default=85, help="Checkpoint epoch")
+    parser.add_argument("--source", type=str, default="./kp_s", help="Source image, f for face frontalization, r for reconstruction")
+    parser.add_argument("--driving", type=str, default='./kp_s', help="Driving dir")
     parser.add_argument("--num_frames", type=int, default=90, help="Number of frames")
 
     args = parser.parse_args()
