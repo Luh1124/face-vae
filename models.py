@@ -1050,7 +1050,9 @@ class EFE_6(nn.Module):
         # self.fc_pitch = nn.Linear(n_filters[-1], n_bins)
         # self.fc_roll = nn.Linear(n_filters[-1], n_bins)
         # self.fc_t = nn.Linear(n_filters[-1], 2)
-
+        self.hidden = nn.Sequential(nn.Linear(n_filters[-1] * 4 * 4, n_filters[-1] * 4 * 4), 
+                                    nn.BatchNorm1d(n_filters[-1] * 4 * 4),
+                                    nn.Tanh())
         cat_channels = K*3 if use_kpc else 0
         
         self.fc_map = nn.Sequential(nn.Linear(n_filters[-1]*4*4 + cat_channels, 512), 
@@ -1072,7 +1074,8 @@ class EFE_6(nn.Module):
     def encode(self, x):
         x = self.pre_layers(x)
         x = self.res_layers(x)
-        return x.flatten(1)
+        x = self.hidden(x.flatten(1))
+        return x
 
     def decode(self, x_en, kpc=None):
         if kpc is not None:
