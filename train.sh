@@ -6,4 +6,5 @@
 # python train.py --batch_size=2 --gpu_ids=0,1 --ext=mainv7_vox --data_name='vox' --root_dir='/home/luh/lh_8T/datasets/vox1/face-video-preprocessing/vox-png/' 
 # python train.py --batch_size=2 --gpu_ids=0,1 --ext=mainv7_lrw --data_name='lrw' --root_dir='/home/luh/lh_8T/datasets/LRW_Data/LRW_Temp' 
 # python train.py --batch_size=8 --gpu_ids=0,1,2,3 --ext=mainv8.2-dl10 --data_name='vox' --root_dir='/home/lh/repo/datasets/vox-png' 
-python train.py --batch_size=10 --gpu_ids=0,1,2,3 --ext=mainv13-noreversec+lcloss --data_name='vox' --root_dir='/home/lh/repo/datasets/vox-png' 
+# python train.py --batch_size=10 --gpu_ids=0,1,2,3 --ext=mainv13-noreversec+lcloss --data_name='vox' --root_dir='/home/lh/repo/datasets/vox-png' 
+CUDA_LAUNCH_BLOCKING=1 python train.py --batch_size=12 --gpu_ids=0,1,3,4,5,6,7 --ext=mainv9finalv2 --data_name='vox' --root_dir='../vox-png' --display_server=127.0.0.1 --display_port=8098
