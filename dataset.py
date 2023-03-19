@@ -104,8 +104,16 @@ class FramesDataset(Dataset):
         if self.is_train and os.path.isdir(path):
             frames = os.listdir(path)
             num_frames = len(frames)
-            frame_idx = np.sort(np.random.choice(num_frames, replace=True, size=2))
-            video_array = [img_as_float32(io.imread(os.path.join(path, str(frames[idx], encoding="utf-8")))) for idx in frame_idx]
+            
+            for iaa in range(num_frames):
+                try:
+                    frame_idx = np.sort(np.random.choice(num_frames, replace=True, size=2))
+                    # video_array = [img_as_float32(io.imread(os.path.join(path, str(frames[idx])))) for idx in frame_idx]
+                    video_array = [img_as_float32(io.imread(os.path.join(path, str(frames[idx], encoding="utf-8")))) for idx in frame_idx]
+                    break
+                except:
+                    continue            
+            # print(path, frame_idx)
         else:
             video_array = read_video(path, frame_shape=self.frame_shape)
             num_frames = len(video_array)
