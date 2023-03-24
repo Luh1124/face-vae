@@ -1051,7 +1051,6 @@ class EFE_6(nn.Module):
         # self.fc_roll = nn.Linear(n_filters[-1], n_bins)
         # self.fc_t = nn.Linear(n_filters[-1], 2)
         self.hidden = nn.Sequential(nn.Linear(n_filters[-1] * 4 * 4, n_filters[-1] * 4 * 4), 
-                                    nn.BatchNorm1d(n_filters[-1] * 4 * 4),
                                     nn.Tanh())
         cat_channels = K*3 if use_kpc else 0
         
@@ -1083,8 +1082,8 @@ class EFE_6(nn.Module):
         else:
             x_en = x_en
         feature = self.fc_map(x_en)
-        delta = torch.tanh(self.fc_delta(feature))*self.weight
-        # delta = self.fc_delta(feature)
+        # delta = torch.tanh(self.fc_delta(feature))*self.weight
+        delta = self.fc_delta(feature)
 
         return delta.view(delta.shape[0], -1, 3)
 
