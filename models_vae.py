@@ -299,4 +299,140 @@ class VAE(nn.Module):
         return self.decode(mu)
 
 
+class Audio_encoder(nn.Module):
+    def __init__(self, use_weight_norm=False):
+        super(Audio_encoder, self).__init__()
+        self.audio_encoder = nn.Sequential(
+            ConvBlock2D("CNA",1,64,3,1,1,use_weight_norm),
+            ConvBlock2D("CNA",64,128,3,1,1,use_weight_norm),
+            # nn.MaxPool2d(3, stride=(1,2),return_indices=True, ceil_mode=True),
+            DownBlock2D(128, 128, use_weight_norm),
+            ConvBlock2D("CNA",128,256,3,1,1,use_weight_norm),
+            ConvBlock2D("CNA",256,256,3,1,1,use_weight_norm),
+            ConvBlock2D("CNA",256,512,3,1,1,use_weight_norm),
+            DownBlock2D(512, 512, use_weight_norm),
+            # nn.MaxPool2d(3, stride=(2,2),return_indices=True, ceil_mode=True)
+            )
+        
+        self.audio_encoder_fc = nn.Sequential(
+            nn.Linear(512*7*3,2048),
+            nn.BatchNorm1d(2048),
+            nn.LeakyReLU(0.2),
+            nn.Linear(2048,512),
+            nn.BatchNorm1d(512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512,256),
+            nn.BatchNorm1d(256),
+            nn.LeakyReLU(0.2),
+            )
+
+    def forward(self, input):
+        feature = self.audio_encoder(input)
+
+        feature = feature.view(feature.size(0),-1)
+        x = self.audio_encoder_fc(feature)
+        return x
+
     
+
+class Audio_decoder(nn.Module):
+    # 256
+    def __init__(self, use_weight_norm=False):
+        super(Audio_decoder, self).__init__()
+        self.audio_decoder_fc = nn.Sequential(
+            nn.Linear(128, 256),
+            nn.BatchNorm1d(256),
+            nn.LeakyReLU(0.2),
+            nn.Linear(256, 512),
+            nn.BatchNorm1d(512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 2048),
+            nn.BatchNorm1d(2048),
+            nn.LeakyReLU(True),
+            nn.Linear(2048, 512*7*3),
+            nn.BatchNorm1d(512*7*3),
+            nn.LeakyReLU(True),
+            )
+        
+        self.audio_decoder = nn.Sequential(
+            ConvBlock2D("CNA",512,512,3,1,1,use_weight_norm),
+            UpBlock2D(512,512,use_weight_norm),
+            ConvBlock2D("CNA",512,256,3,1,1,use_weight_norm),
+            ConvBlock2D("CNA",256,256,3,1,1,use_weight_norm),
+            ConvBlock2D("CNA",256,128,3,1,1,use_weight_norm),
+            UpBlock2D(128,128,use_weight_norm),
+            ConvBlock2D("CNA",128,64,3,1,1,use_weight_norm),
+            ConvBlock2D("CNA",64,1,3,1,1,use_weight_norm),
+            )
+
+
+    def forward(self, x):
+        feature = self.audio_decoder_fc(x)
+        feature = feature.view(feature.size(0), 512, 7, 3)
+        x = self.audio_decoder(feature)
+        return x
+        
+
+class AudioVAE(nn.Module):
+    def __init__(self, category="linear") -> None:
+        super().__init__()
+        self.audio_encoder = Audio_encoder()
+        self.audio_decoder = Audio_decoder()
+        self.fc_mu = nn.Linear(256, 128)
+        self.fc_var = nn.Linear(256, 128)
+        self.AM = AffineNet(category=category)
+    
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+
+        return eps * std + mu
+        
+    def encode(self, input):
+        x = self.audio_encoder(input)
+        mu = self.fc_mu(x)
+        log_var = self.fc_var(x)
+
+        return mu, log_var
+
+
+    def forward(self, input, use_vae=True):
+        mu, log_var = self.encode(input)
+        if use_vae:
+            y = self.reparameterize(mu, log_var)
+        else: 
+            y = mu
+
+        z = self.AM(y)
+
+        return self.audio_decoder(y), z, mu, log_var
+
+
+class AffineNet(nn.Module):
+    def __init__(self, inch=128, outch=128, category="linear") -> None:
+        super().__init__()
+        if category == "linear":
+            # self.Affinelayer_mu = nn.Linear(inch ,outch, bias=True)
+            # self.Affinelayer_logvar = nn.Linear(inch ,outch, bias=True)
+            self.Affinelayer = nn.Linear(inch ,outch, bias=True)
+
+        elif category == "nonlinear":
+            # self.Affinelayer_mu = nn.Sequential(nn.Linear(inch ,outch, bias=True),
+            #                                  nn.ReLU(),
+            #                                  nn.Linear(inch ,outch, bias=True))  
+            # self.Affinelayer_logvar = nn.Sequential(nn.Linear(inch ,outch, bias=True),
+            #                                  nn.ReLU(),
+            #                                  nn.Linear(inch ,outch, bias=True)) 
+            self.Affinelayer = nn.Sequential(nn.Linear(inch ,outch, bias=True),
+                                             nn.ReLU(),
+                                             nn.Linear(inch ,outch, bias=True))
+        elif category == "direct":
+            # self.Affinelayer_mu = nn.Identity()
+            # self.Affinelayer_logvar = nn.Identity()
+            self.Affinelayer = nn.Identity()
+
+    def forward(self, x):
+        # mu = self.Affinelayer_mu(mu)
+        # logvar = self.Affinelayer_logvar(logvar)
+        x = self.Affinelayer(x)
+        return x
