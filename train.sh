@@ -8,4 +8,4 @@
 # python train.py --batch_size=8 --gpu_ids=0,1,2,3 --ext=mainv8.2-dl10 --data_name='vox' --root_dir='/home/lh/repo/datasets/vox-png' 
 # python train.py --batch_size=10 --gpu_ids=0,1,2,3 --ext=mainv13-noreversec+lcloss --data_name='vox' --root_dir='/home/lh/repo/datasets/vox-png' 
 # CUDA_LAUNCH_BLOCKING=1 python train.py --batch_size=12 --gpu_ids=0,1,3,4,5,6,7 --ext=mainv14_hid_rkpc --data_name='vox' --root_dir='../vox-png'
-CUDA_LAUNCH_BLOCKING=1 python train.py --batch_size=3 --gpu_ids=0,1,3,4,5,6,7 --ext=mainv14_hid_rkpc --data_name='vox' --root_dir='../dataset/vox1/vox-png'
+CUDA_LAUNCH_BLOCKING=1 python train.py --batch_size=3 --gpu_ids=0,1,2,3,4,5,6,7 --ext=mainv14_hid_rkpc --data_name='vox' --root_dir='../dataset/vox1/vox-png'
