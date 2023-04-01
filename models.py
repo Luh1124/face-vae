@@ -1082,8 +1082,8 @@ class EFE_6(nn.Module):
         else:
             x_en = x_en
         feature = self.fc_map(x_en)
-        # delta = torch.tanh(self.fc_delta(feature))*self.weight
-        delta = self.fc_delta(feature)
+        delta = torch.tanh(self.fc_delta(feature))*self.weight
+        # delta = self.fc_delta(feature)
 
         return delta.view(delta.shape[0], -1, 3)
 
