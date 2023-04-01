@@ -11,8 +11,8 @@ import collections
 from distributed import master_only, master_only_print, get_rank, is_master
 
 # from models import EFE_linear as EFE
-from models import EFE_6 as EFE
-from models import AFE, CKD, HPE_EDE, MFE, Generator, Discriminator
+from models import EFE_7 as EFE
+from models import AFE, CKD, MFE, Generator, Discriminator
 from trainer import GeneratorFull, DiscriminatorFull
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
@@ -52,7 +52,7 @@ class Logger:
         self.epoch = 0
         self.best_loss = float("inf")
         # self.g_models = {"efe": EFE(vae_seq=None), "afe": AFE(), "ckd": CKD(), "hpe_ede": HPE_EDE(), "mfe": MFE(), "generator": Generator()}
-        self.g_models = {"efe": EFE(), "afe": AFE(), "ckd": CKD(), "hpe_ede": HPE_EDE(), "mfe": MFE(), "generator": Generator()}
+        self.g_models = {"efe": EFE(), "afe": AFE(), "ckd": CKD(), "mfe": MFE(), "generator": Generator()}
         self.d_models = {"discriminator": Discriminator()}
         for name, model in self.g_models.items():
             self.g_models[name] = torch.nn.parallel.DistributedDataParallel(torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda(), device_ids=[get_rank()])
