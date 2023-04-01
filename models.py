@@ -1191,7 +1191,7 @@ class EFE_7(nn.Module):
                                     nn.Linear(512, 15*32), 
                                     )
         
-        self.cross_attention = CrossAttention(query_dim=63, context_dim=32, heads=8, dim_head=32, dropout=0.2)
+        self.cross_attention = CrossAttention(query_dim=63, context_dim=32, heads=4, dim_head=32, dropout=0.2)
         
         self.fc_delta = nn.Linear(63, 3)
 
