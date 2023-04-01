@@ -1144,10 +1144,10 @@ class EFE_7(nn.Module):
         for i in range(len(n_filters) - 1):
             res_layers.extend(self._make_layer(i, n_filters[i], n_filters[i + 1], n_blocks[i], use_weight_norm))
         self.res_layers = nn.Sequential(*res_layers)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         self.fc_t = nn.Linear(n_filters[-1], 2)
         self.fc_scale = nn.Linear(n_filters[-1], 1)
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         self.hid_delta = nn.Sequential(nn.Linear(n_filters[-1], 256), 
                                     nn.Tanh())        
@@ -1175,7 +1175,7 @@ class EFE_7(nn.Module):
         x = self.pre_layers(x)
         x = self.res_layers(x)
         avg_x = self.avgpool(x)
-        return avg_x
+        return avg_x.flatten(1)
 
     def encode(self, x):
         avg_x = self.down(x)
