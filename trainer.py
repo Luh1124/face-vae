@@ -6,8 +6,8 @@ import torch.nn.functional as F
 from torch import nn
 # from models import EFE_linear as EFE
 # from models import EFE_conv5 as EFE
-from models import EFE_6 as EFE
-from models import AFE, CKD, HPE_EDE, MFE, Generator, Discriminator
+from models import EFE_7 as EFE
+from models import AFE, CKD, MFE, Generator, Discriminator
 from losses import ContrastiveLoss_linear as ContrastiveLoss
 # from losses import ContrastiveLoss_conv2 as ContrastiveLoss
 from losses import (PerceptualLoss, GANLoss, FeatureMatchingLoss, EquivarianceLoss, KeypointPriorLoss, 
@@ -219,7 +219,6 @@ class GeneratorFull(nn.Module):
         efe: EFE,
         afe: AFE,
         ckd: CKD,
-        hpe_ede: HPE_EDE,
         mfe: MFE,
         generator: Generator,
         discriminator: Discriminator,
@@ -235,7 +234,6 @@ class GeneratorFull(nn.Module):
         self.efe = efe
         self.afe = afe
         self.ckd = ckd
-        self.hpe_ede = hpe_ede
         self.mfe = mfe
         self.generator = generator
         self.discriminator = discriminator
@@ -277,11 +275,11 @@ class GeneratorFull(nn.Module):
         kp_c_tran = self.ckd(transformed_d) 
 
         cated = torch.cat([s, d, transformed_d], dim=0)
-        yaw, pitch, roll, t, scale = self.hpe_ede(cated)
-        [t_s, t_d, t_tran], [scale_s, scale_d, scale_tran] = (
-            torch.chunk(t, 3, dim=0),
-            torch.chunk(scale, 3, dim=0),
-        )
+
+        delta_s, x_c_s, x_a_c_s, t_s, scale_s = self.efe(s, None, kp_c)
+        delta_d, x_c_d, x_a_c_d, t_d, scale_d = self.efe(d, d_a, kp_c)
+        delta_tran, _, _, t_tran, scale_tran = self.efe(transformed_d, None, kp_c_tran)
+
         with torch.no_grad():
             self.pretrained.eval()
             real_yaw, real_pitch, real_roll = self.pretrained(F.interpolate(apply_imagenet_normalization(cated), size=(224, 224)))
@@ -290,19 +288,6 @@ class GeneratorFull(nn.Module):
             torch.chunk(real_pitch.detach(), 3, dim=0),
             torch.chunk(real_roll.detach(), 3, dim=0),
         )
-        # kp_s_old, Rs = transform_kp(kp_c, yaw_s, pitch_s, roll_s, t_s, scale_s)
-        # kp_d_old, Rd = transform_kp(kp_c, yaw_d, pitch_d, roll_d, t_d, scale_d)
-        # transformed_kp_old, _ = transform_kp(kp_c_tran, yaw_tran, pitch_tran, roll_tran, t_tran, scale_tran)
-
-        # kp_s, x_c_s, x_a_c_s, x_kl_s, x_l2_s = self.efe(s, s_a, kp_s_old, train_vae=False)
-        # kp_d, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_d_old, train_vae=train_vae)
-
-        # transformed_kp, _, _, _, _ = self.efe(transformed_d, None, transformed_kp_old)
-        
-        delta_s, x_c_s, x_a_c_s, x_kl_s, x_l2_s = self.efe(s, None, kp_c)
-        delta_d, x_c_d, x_a_c_d, x_kl_d, x_l2_d = self.efe(d, d_a, kp_c)
-
-        delta_tran, _, _, _, _ = self.efe(transformed_d, None, kp_c_tran)
         
         kp_s, Rs = transform_kp(kp_c+delta_s, yaw_s, pitch_s, roll_s, t_s, scale_s)
         kp_d, Rd = transform_kp(kp_c+delta_d, yaw_d, pitch_d, roll_d, t_d, scale_d)

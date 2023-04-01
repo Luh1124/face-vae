@@ -1099,6 +1099,113 @@ class EFE_6(nn.Module):
         
         return delta, x_en, x_en_c, None, None
 
+class CrossAttention(nn.Module):
+    def __init__(self, in_dim, out_dim):
+        super(CrossAttention, self).__init__()
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.query = nn.Linear(in_dim, out_dim, bias=False)
+        self.key = nn.Linear(in_dim, out_dim, bias=False)
+        self.value = nn.Linear(in_dim, out_dim, bias=False)
+
+    def forward(self, x, y):
+        batch_size = x.shape[0]
+        num_queries = x.shape[1]
+        num_keys = y.shape[1]
+        x = self.query(x)
+        y = self.key(y)
+        # 计算注意力分数
+        attn_scores = torch.matmul(x, y.transpose(-2, -1)) / (self.out_dim ** 0.5)
+        attn_weights = F.softmax(attn_scores, dim=-1)
+        # 计算加权和
+        V = self.value(y)
+        output = torch.bmm(attn_weights, V)
+        
+        return output
+class EFE_7(nn.Module):
+    # Head pose estimator && expression deformation estimator
+    # [N,3,256,256]
+    # [N,64,64,64]
+    # [N,64,64,64]
+    # [N,128,32,32]
+    # [N,128,16,16]
+    # [N,256,8,8]
+    # [N,16,4,4]
+    # [N,66] [N,66] [N,66] [N,3] [N,60]
+    # [N,] [N,] [N,] [N,3] [N,20,3]
+    def __init__(self, use_weight_norm=False, n_filters=[64, 256, 512, 1024, 2048], 
+        n_blocks=[3, 3, 5, 2], K=15, 
+        use_kpc=True,
+        weight=0.5
+        ):
+        super().__init__()
+        self.pre_layers = nn.Sequential(ConvBlock2D("CNA", 3, n_filters[0], 7, 2, 3, use_weight_norm), nn.MaxPool2d(3, 2, 1))
+        res_layers = []
+        for i in range(len(n_filters) - 1):
+            res_layers.extend(self._make_layer(i, n_filters[i], n_filters[i + 1], n_blocks[i], use_weight_norm))
+        self.res_layers = nn.Sequential(*res_layers)
+
+        self.fc_t = nn.Linear(n_filters[-1], 2)
+        self.fc_scale = nn.Linear(n_filters[-1], 1)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+
+        self.hid_delta = nn.Sequential(nn.Linear(n_filters[-1], 256), 
+                                    nn.Tanh())        
+
+        self.fc_map = nn.Sequential(nn.Linear(256, 256), 
+                                    nn.BatchNorm1d(256),
+                                    nn.ReLU(),
+                                    nn.Linear(256, 256), 
+                                    nn.BatchNorm1d(256),
+                                    nn.ReLU(),
+                                    nn.Linear(256, K*3), 
+                                    )
+        self.cross_attention = CrossAttention(K*3, K*3)
+        self.fc_delta = nn.Linear(K*3, K*3)
+        
+        self.weight = weight
+
+    def _make_layer(self, i, in_channels, out_channels, n_block, use_weight_norm):
+        stride = 1 if i == 0 else 2
+        return [ResBottleneck(in_channels, out_channels, stride, use_weight_norm)] + [
+            ResBottleneck(out_channels, out_channels, 1, use_weight_norm) for _ in range(n_block)
+        ]
+    
+    def down(self, x):
+        x = self.pre_layers(x)
+        x = self.res_layers(x)
+        avg_x = self.avgpool(x)
+        return avg_x
+
+    def encode(self, x):
+        avg_x = self.down(x)
+        x_en = self.hid_delta(avg_x)
+        return x_en
+
+    def decode(self, x_en, kpc=None):
+        x_de = self.fc_map(x_en)
+        x_cross = self.cross_attention(kpc.flatten(1), x_de)
+        delta = torch.tanh(self.fc_delta(x_cross))*self.weight
+
+        return delta.view(delta.shape[0], -1, 3)
+
+    def forward(self, x, x_c=None, kpc=None):
+        avg_x = self.down(x)
+        t, scale = self.fc_t(avg_x), F.relu(self.fc_scale(avg_x))
+        x_en = self.hid_delta(avg_x)
+        
+        if x_c is not None:
+            x_en_c = self.encode(x_c)
+        else:
+            x_en_c = None
+        
+        delta = self.decode(x_en, kpc)
+        zero = torch.zeros((t.shape[0], 1)).to(t.device)
+        t = torch.cat([t,zero], dim=-1)
+        scale = scale.view(x.shape[0], 1, 1, 1)
+        
+        return delta, x_en, x_en_c, t, scale
+
 class MFE(nn.Module):
     # Motion field estimator
     # (4+1)x(20+1)=105
