@@ -1099,29 +1099,62 @@ class EFE_6(nn.Module):
         
         return delta, x_en, x_en_c, None, None
 
-class CrossAttention(nn.Module):
-    def __init__(self, in_dim, out_dim):
-        super(CrossAttention, self).__init__()
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-        self.query = nn.Linear(in_dim, out_dim, bias=False)
-        self.key = nn.Linear(in_dim, out_dim, bias=False)
-        self.value = nn.Linear(in_dim, out_dim, bias=False)
 
-    def forward(self, x, y):
-        batch_size = x.shape[0]
-        num_queries = x.shape[1]
-        num_keys = y.shape[1]
-        x = self.query(x)
-        y = self.key(y)
-        # 计算注意力分数
-        attn_scores = torch.matmul(x, y.transpose(-2, -1)) / (self.out_dim ** 0.5)
-        attn_weights = F.softmax(attn_scores, dim=-1)
-        # 计算加权和
-        V = self.value(y)
-        output = torch.bmm(attn_weights, V)
-        
-        return output
+from torch import nn, einsum
+from einops import rearrange, repeat
+from inspect import isfunction
+
+def exists(val):
+    return val is not None
+
+def default(val, d):
+    if exists(val):
+        return val
+    return d() if isfunction(d) else d
+
+class CrossAttention(nn.Module):
+    def __init__(self, query_dim, context_dim=None, heads=8, dim_head=64, dropout=0.):
+        super().__init__()
+        inner_dim = dim_head * heads
+        context_dim = default(context_dim, query_dim)
+
+        self.scale = dim_head ** -0.5
+        self.heads = heads
+
+        self.to_q = nn.Linear(query_dim, inner_dim, bias=False)
+        self.to_k = nn.Linear(context_dim, inner_dim, bias=False)
+        self.to_v = nn.Linear(context_dim, inner_dim, bias=False)
+
+        self.to_out = nn.Sequential(
+            nn.Linear(inner_dim, query_dim),
+            nn.Dropout(dropout)
+        )
+
+    def forward(self, x, context=None, mask=None):
+        h = self.heads
+
+        q = self.to_q(x)
+        context = default(context, x)
+        k = self.to_k(context)
+        v = self.to_v(context)
+
+        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> (b h) n d', h=h), (q, k, v))
+
+        sim = einsum('b i d, b j d -> b i j', q, k) * self.scale
+
+        if exists(mask):
+            mask = rearrange(mask, 'b ... -> b (...)')
+            max_neg_value = -torch.finfo(sim.dtype).max
+            mask = repeat(mask, 'b j -> (b h) () j', h=h)
+            sim.masked_fill_(~mask, max_neg_value)
+
+        # attention, what we cannot get enough of
+        attn = sim.softmax(dim=-1)
+
+        out = einsum('b i j, b j d -> b i d', attn, v)
+        out = rearrange(out, '(b h) n d -> b n (h d)', h=h)
+        return self.to_out(out)
+
 class EFE_7(nn.Module):
     # Head pose estimator && expression deformation estimator
     # [N,3,256,256]
@@ -1152,18 +1185,20 @@ class EFE_7(nn.Module):
         self.hid_delta = nn.Sequential(nn.Linear(n_filters[-1], 256), 
                                     nn.Tanh())        
 
-        self.fc_map = nn.Sequential(nn.Linear(256, 256), 
-                                    nn.BatchNorm1d(256),
+        self.fc_map = nn.Sequential(nn.Linear(256, 512), 
+                                    nn.BatchNorm1d(512),
                                     nn.ReLU(),
-                                    nn.Linear(256, 256), 
-                                    nn.BatchNorm1d(256),
-                                    nn.ReLU(),
-                                    nn.Linear(256, K*3), 
+                                    nn.Linear(512, 15*32), 
                                     )
-        self.cross_attention = CrossAttention(K*3, K*3)
-        self.fc_delta = nn.Linear(K*3, K*3)
         
+        self.cross_attention = CrossAttention(query_dim=63, context_dim=32, heads=8, dim_head=64, dropout=0.2)
+        
+        self.fc_delta = nn.Linear(63, 3)
+
+        self.get_embeding, _ = get_embedder(10)
+
         self.weight = weight
+        self.K = K
 
     def _make_layer(self, i, in_channels, out_channels, n_block, use_weight_norm):
         stride = 1 if i == 0 else 2
@@ -1183,8 +1218,9 @@ class EFE_7(nn.Module):
         return x_en
 
     def decode(self, x_en, kpc=None):
-        x_de = self.fc_map(x_en)
-        x_cross = self.cross_attention(kpc.flatten(1), x_de)
+        x_de = self.fc_map(x_en).view(-1, self.K, 32)
+        kpc_emd = self.get_embeding(kpc)
+        x_cross = self.cross_attention(kpc_emd, x_de)
         delta = torch.tanh(self.fc_delta(x_cross))*self.weight
 
         return delta.view(delta.shape[0], -1, 3)
@@ -1306,3 +1342,22 @@ class Discriminator(nn.Module):
         output = res[-1]
         features = res[1:-1]
         return output, features
+
+
+if __name__ == "__main__":
+    # 定义输入矩阵 x 和 y，其大小分别为 1024, 512 和 1024, 1024
+    x = torch.randn(2, 15, 63)
+    
+    y = torch.randn(2, 15, 64)
+
+    # get_embeding, _ = get_embedder(10)
+    # xc = get_embeding(x).reshape(-1, 15*63)
+
+
+    # 创建 CrossAttention 模型，并对输入进行前向传播
+    cross_attn = CrossAttention(query_dim=63, context_dim=64, heads=8, dim_head=64, dropout=0.2)
+    output = cross_attn(x, y)
+
+    # 输出新的矩阵大小
+    print(output.shape) # (1, 1024,1024,1024)
+    print(output)
