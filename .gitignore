@@ -8,3 +8,4 @@ __pycache__
 *.txt
 kp*
 pre_kp
+face_alignment_model.pt
