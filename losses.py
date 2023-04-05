@@ -411,6 +411,7 @@ class IdLoss(nn.Module):
         loss = self.mseloss(Rec[0], Rec[1])
         return loss
 
+
 from utils import pts_1k_to_145_mouth, pts_1k_to_145_eye, pts_1k_to_145_pupil, pts_1k_to_145_others
 
 class LandmarkNet(nn.Module):
