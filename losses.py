@@ -410,3 +410,42 @@ class IdLoss(nn.Module):
     def forward(self, Rec):
         loss = self.mseloss(Rec[0], Rec[1])
         return loss
+
+from utils import pts_1k_to_145_mouth, pts_1k_to_145_eye, pts_1k_to_145_pupil, pts_1k_to_145_others
+
+class LandmarkNet(nn.Module):
+    def __init__(self, ckp_path):
+        super().__init__()
+        self.face_alignment_net = torch.jit.load(ckp_path, map_location='cpu').cuda().eval()
+        for param in self.face_alignment_net.parameters():
+            param.requires_grad = False
+
+    def forward(self, input):
+        bs = input.shape[0]
+        landmarks = self.face_alignment_net(input)
+        landmarks = landmarks.view(bs, 1000, 2)
+        
+        landmarks_dict = {}
+        landmarks_dict["mouth"] = pts_1k_to_145_mouth(landmarks)
+        landmarks_dict["eye"] = pts_1k_to_145_eye(landmarks)
+        landmarks_dict["pupil"] = pts_1k_to_145_pupil(landmarks)
+        landmarks_dict["others"] = pts_1k_to_145_others(landmarks)
+        
+        return landmarks_dict
+    
+class LandmarkLoss(nn.Module):
+    def __init__(self, weight={"mouth": 3.0, "eye": 3.0, "pupil": 3.0, "others": 1.0}, ckp_path="face_alignment_model.pt"):
+        super().__init__()
+        self.landmarknet = LandmarkNet(ckp_path)
+        self.weight = weight
+        self.criterion = nn.MSELoss()
+
+    def forward(self, input, target):
+        lm_input = self.landmarknet(input)
+        lm_target = self.landmarknet(target)
+        
+        loss = 0
+        for part, weight in self.weight.items():
+            loss += weight * self.criterion(lm_input[part], lm_target[part].detach())
+        
+        return loss
