@@ -299,8 +299,13 @@ def demo(args):
             img_with_kp = img_with_kp.clip(0, 1)
             img_with_kp = (255 * img_with_kp).astype(np.uint8)
             # imageio.mimsave(args.output, output_frames)
+<<<<<<< HEAD
             os.makedirs(os.path.dirname(dri) + '_kp_outv9fv3_c_lml', exist_ok=True)
             imageio.imwrite(os.path.dirname(dri) + '_kp_outv9fv3_c_lml' + '/' + f'{idx}_'+os.path.basename(dri) , img_with_kp)
+=======
+            os.makedirs(os.path.dirname(dri) + '_kp_outv9fv3_lml', exist_ok=True)
+            imageio.imwrite(os.path.dirname(dri) + '_kp_outv9fv3_lml' + '/' + f'{idx}_'+os.path.basename(dri) , img_with_kp)
+>>>>>>> 3026d68679a72b5364b8f7a96fac244cfb0688a6
         
         # os.makedirs(dirpath+'out', exist_ok=True)
         # out_path = os.path.join(dirpath+'out', filename)
@@ -319,7 +324,11 @@ def demo(args):
 
             img_d = vs.create_image_grid(*img_d)
             img_d = (255 * img_d).astype(np.uint8)
+<<<<<<< HEAD
             imageio.imwrite(os.path.dirname(dri) + '_kp_outv9fv3_c_lml' + '/' + f'{idx}_d_'+os.path.basename(dri), img_d)
+=======
+            imageio.imwrite(os.path.dirname(dri) + '_kp_outv9fv3_lml' + '/' + f'{idx}_d_'+os.path.basename(dri), img_d)
+>>>>>>> 3026d68679a72b5364b8f7a96fac244cfb0688a6
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="face-vid2vid")
@@ -327,7 +336,11 @@ if __name__ == "__main__":
     def str2bool(s):
         return s.lower().startswith("t")
 
+<<<<<<< HEAD
     parser.add_argument("--ckp_dir", type=str, default="ckp_1644_mainv9finalv3-lml", help="Checkpoint dir")
+=======
+    parser.add_argument("--ckp_dir", type=str, default="ckp_1644_mainv9fv3_lml", help="Checkpoint dir")
+>>>>>>> 3026d68679a72b5364b8f7a96fac244cfb0688a6
     parser.add_argument("--output", type=str, default="output.gif", help="Output video")
     parser.add_argument("--ckp", type=int, default=113, help="Checkpoint epoch")
     parser.add_argument("--source", type=str, default="./kp_s copy", help="Source image, f for face frontalization, r for reconstruction")
