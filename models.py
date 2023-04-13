@@ -994,8 +994,8 @@ class HPE_EDE(nn.Module):
         self.fc_yaw = nn.Linear(n_filters[-1], n_bins)
         self.fc_pitch = nn.Linear(n_filters[-1], n_bins)
         self.fc_roll = nn.Linear(n_filters[-1], n_bins)
-        self.fc_t = nn.Linear(n_filters[-1], 2)
-        self.fc_scale = nn.Linear(n_filters[-1], 1)
+        self.fc_t = nn.Linear(n_filters[-1], 3)
+        # self.fc_scale = nn.Linear(n_filters[-1], 1)
         self.n_bins = n_bins
         self.idx_tensor = torch.FloatTensor(list(range(self.n_bins))).unsqueeze(0).cuda()
 
@@ -1019,9 +1019,10 @@ class HPE_EDE(nn.Module):
         yaw = (yaw - self.n_bins // 2) * 3 * np.pi / 180
         pitch = (pitch - self.n_bins // 2) * 3 * np.pi / 180
         roll = (roll - self.n_bins // 2) * 3 * np.pi / 180
-        zero = torch.zeros((t.shape[0], 1)).to(t.device)
-        t = torch.cat([t,zero], dim=-1)
-        scale = scale.view(x.shape[0], 1, 1, 1)
+        # zero = torch.zeros((t.shape[0], 1)).to(t.device)
+        # t = torch.cat([t,zero], dim=-1)
+        # scale = scale.view(x.shape[0], 1, 1, 1)
+        scale = None
         return yaw, pitch, roll, t, scale
     
 class EFE_6(nn.Module):

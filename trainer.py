@@ -270,9 +270,8 @@ class GeneratorFull(nn.Module):
 
         cated = torch.cat([s, d, transformed_d], dim=0)
         yaw, pitch, roll, t, scale = self.hpe_ede(cated)
-        [t_s, t_d, t_tran], [scale_s, scale_d, scale_tran] = (
-            torch.chunk(t, 3, dim=0),
-            torch.chunk(scale, 3, dim=0),
+        [t_s, t_d, t_tran] = (
+            torch.chunk(t, 3, dim=0)
         )
         with torch.no_grad():
             self.pretrained.eval()
