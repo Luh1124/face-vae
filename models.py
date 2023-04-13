@@ -1009,7 +1009,7 @@ class HPE_EDE(nn.Module):
         x = self.pre_layers(x)
         x = self.res_layers(x)
         x = torch.mean(x, (2, 3))
-        t = self.fc_t(x)
+        yaw, pitch, roll, t = self.fc_yaw(x), self.fc_pitch(x), self.fc_roll(x), self.fc_t(x)
         yaw = torch.softmax(yaw, dim=1)
         pitch = torch.softmax(pitch, dim=1)
         roll = torch.softmax(roll, dim=1)
