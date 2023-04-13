@@ -50,12 +50,12 @@ def rotation_matrix_z(theta):
     )
 
 
-def transform_kp(canonical_kp, yaw, pitch, roll, t, scale):
+def transform_kp(canonical_kp, yaw, pitch, roll, t, delta):
     # [N,K,3] [N,] [N,] [N,] [N,3] [N,K,3]
     # y, x, z
     # w, h, d
     rot_mat = rotation_matrix_y(pitch) @ rotation_matrix_x(yaw) @ rotation_matrix_z(roll)
-    transformed_kp = torch.matmul(rot_mat.unsqueeze(1), scale*canonical_kp.unsqueeze(-1)).squeeze(-1) + t.unsqueeze(1)
+    transformed_kp = torch.matmul(rot_mat.unsqueeze(1), canonical_kp.unsqueeze(-1)).squeeze(-1) + t.unsqueeze(1) + delta
     return transformed_kp, rot_mat
 
 
