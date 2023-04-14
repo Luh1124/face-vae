@@ -4,6 +4,7 @@ import numpy as np
 import torchvision
 from torch import nn
 from utils import apply_imagenet_normalization, apply_vggface_normalization
+import cv2
 
 def l1(x, y):
     return torch.abs(x-y)
@@ -457,13 +458,15 @@ from facedet.detector import RetinaFaceDetector
 from torchvision import transforms
 class ArcfaceLoss(nn.Module):
     # Download the face recognition model arcface from insightface Go to Baidu Drive -> arcface_torch -> glint360k_cosface_r50_fp16_0.1 -> backbone.pth
-    def __init__(self, ckp_path="./weights/backbone.pth"):
+    def __init__(self, ckp_path="./weights/backbone.pth", if_align=False):
         super().__init__()
         self.arcface = iresnet50().cuda()
         self.arcface.eval()
         self.arcface.load_state_dict(torch.load(ckp_path))
         self.Normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-        self.face_detector = RetinaFaceDetector()
+        if if_align:
+            self.face_detector = RetinaFaceDetector()
+            self.imgdim = 256
 
     def check_bounding_boxes(self, bounding_boxes):
         filter_boxes = []
@@ -479,22 +482,57 @@ class ArcfaceLoss(nn.Module):
         return filter_boxes
     
     def face_align(self, img):
-        bounding_boxes = self.face_detector.forward(img, min_face_size=120)
-        if len(bounding_boxes) == 0:
-            return img
+        batch_bounding_boxes = self.face_detector.forward(img, min_face_size=120)
+        
+        theta_list = []
+        for idx, bounding_boxes in enumerate(batch_bounding_boxes):
+            d = None
+            if len(bounding_boxes) == 0:
+                d = [0., 0., 256., 256.]
+                scale=1
+            # if idx == 2:
+            #     d = [0., 0., 256., 256.]
+            #     scale=1
+            bounding_boxes = self.check_bounding_boxes(bounding_boxes)
+            if len(bounding_boxes) == 0:
+                d = [0., 0., 256., 256.]
+                scale=1
+            if d is None:
+                d = bounding_boxes[0]
+                scale = self.imgdim * 0.6 / min(d[2] - d[0], d[3] - d[1])
+            src_center = np.array([d[2] - (d[2] - d[0]) / 2.0, d[3] - (d[3] - d[1]) / 2.0]).astype(np.float32)
+            rotate_degree = 0
+            # scale = 1
+            dst_center = np.array([0.5, 0.5]) * self.imgdim
+            offset = dst_center - src_center
+            M = cv2.getRotationMatrix2D((src_center[0], src_center[1]), rotate_degree, 1/scale)
+            M[:, 2] += offset
+            M[:, 2] = M[:, 2] / self.imgdim
+            theta_list.append(torch.from_numpy(np.array(M).astype(np.float32)).cuda().unsqueeze(0))
 
-        bounding_boxes = self.check_bounding_boxes(bounding_boxes)
-        if len(bounding_boxes) == 0:
-            return img
+        theta = torch.cat(theta_list)
+        grid = F.affine_grid(theta, [img.shape[0], 3, self.imgdim, self.imgdim], align_corners=True)  # 得到grid 用于grid sample
+        warp_img = F.grid_sample(img, grid, align_corners=True)
 
-        return img
+        return warp_img
 
+    def align_forward(self, generated_d, n, s):
+        fake = self.Normalize(self.face_align(torch.flip(generated_d, dims=[1])))
+        neutral = self.Normalize(self.face_align(torch.flip(n, dims=[1])))
+        real = self.Normalize(self.face_align(torch.flip(s, dims=[1])))
+
+        fake_z_id = self.arcface(F.interpolate(torch.flip(fake, dims=[1]), [143, 143], mode="nearest")[..., 15:127, 15:127])
+        neutral_z_id = self.arcface(F.interpolate(torch.flip(neutral, dims=[1]), [143, 143], mode="nearest")[..., 15:127, 15:127])
+
+        with torch.no_grad():
+            z_id = self.arcface(F.interpolate(torch.flip(real, dims=[1]), [143, 143], mode="nearest")[..., 15:127, 15:127]).detach()
+        L_sim = (1 - torch.cosine_similarity(z_id, fake_z_id)).mean() + 2*(1 - torch.cosine_similarity(z_id, neutral_z_id)).mean()
+        return L_sim
 
     def forward(self, generated_d, n, s):
-
-        fake = self.Normalize(self.face_align(generated_d))
-        neutral = self.Normalize(self.face_align(n))
-        real = self.Normalize(self.face_align(s))
+        fake = self.Normalize(generated_d)
+        neutral = self.Normalize(n)
+        real = self.Normalize(s)
 
         fake_z_id = self.arcface(F.interpolate(fake, [143, 143], mode="nearest")[..., 15:127, 15:127])
         neutral_z_id = self.arcface(F.interpolate(neutral, [143, 143], mode="nearest")[..., 15:127, 15:127])
@@ -504,7 +542,7 @@ class ArcfaceLoss(nn.Module):
         L_sim = (1 - torch.cosine_similarity(z_id, fake_z_id)).mean() + 2*(1 - torch.cosine_similarity(z_id, neutral_z_id)).mean()
     
         return L_sim
-    
+
 if __name__ == "__main__":
     from skimage import io, img_as_float32
     img1 = np.array(img_as_float32(io.imread('/home/luh/lh_8T/datasets/vox1/face-video-preprocessing/vox-png/test/id10306#ST2JZXcyYkE#00001.txt#000.mp4/0000000.png'))[:, :, :3]).transpose((2, 0, 1))

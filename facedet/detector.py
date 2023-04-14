@@ -8,7 +8,7 @@ from . import box_utils_Retina
 from .layers.functions.prior_box import PriorBox
 from .config import cfg_re50
 from .retinaface import RetinaFace
-
+from torch.nn import functional as F
 
 class RetinaFaceDetector(object):
     def __init__(self, gpu_id=None):
@@ -20,11 +20,14 @@ class RetinaFaceDetector(object):
         self.net = model.cuda()
         self.resize = 1
         self.confidence_threshold = 0.02
-        self.top_k = 5000
+        self.top_k = 500
         self.nms_threshold = 0.4
-        self.keep_top_k = 750
+        self.keep_top_k = 100
         self.im_dim = 256
-        self.priorbox = PriorBox(self.cfg, image_size=(self.im_dim, self.im_dim))
+        priorbox = PriorBox(self.cfg, image_size=(self.im_dim, self.im_dim))
+        with torch.no_grad():
+            priors = priorbox.forward()
+            self.priors = priors.cuda()
 
     def remove_prefix(self, state_dict, prefix):
         # print('remove prefix \'{}\''.format(prefix))
@@ -56,9 +59,10 @@ class RetinaFaceDetector(object):
         return model
 
     def forward(self, img_tensor, min_face_size=120):
-        # img_scale = 640 / max(img_tensor.shape[2], img_tensor.shape[3])
+        img_scale = self.im_dim / max(img_tensor.shape[2], img_tensor.shape[3])
         # img = cv2.resize(img_raw, (0, 0), fx=img_scale, fy=img_scale)
-        img = torch.clamp(img_tensor*255, 0, 255)
+        img = F.interpolate(img_tensor, scale_factor=img_scale, mode='bicubic', align_corners=True)
+        img = torch.clamp(img*255, 0, 255)
         batch, channel, im_height, im_width = img.shape
         scale = torch.Tensor([im_width, im_height, im_width, im_height])
         img -= torch.Tensor([104., 117., 123.])[:, None, None].cuda()
@@ -67,52 +71,50 @@ class RetinaFaceDetector(object):
         # img = img.to(self.device)
         scale = scale.cuda()
         loc, conf, landms = self.net(img)  # forward pass
+        prior_data = self.priors.data
+        batch_dets = []
+        for idx in range(batch):
+            boxes = box_utils_Retina.decode(loc.data[idx], prior_data, self.cfg['variance'])
+            boxes = boxes * scale / self.resize
 
-        with torch.no_grad():
-            priors = self.priorbox.forward()
-            priors = priors.cuda()
-        prior_data = priors.data
-        boxes = box_utils_Retina.decode(loc.data.squeeze(0), prior_data, self.cfg['variance'])
+            boxes = boxes.cpu().numpy()
+            scores = conf[idx].data.cpu().numpy()[:, 1]
+            # landms = box_utils_Retina.decode_landm(landms.data.squeeze(0), prior_data, self.cfg['variance'])
+            # scale1 = torch.Tensor([img.shape[3], img.shape[2], img.shape[3], img.shape[2],
+            #                        img.shape[3], img.shape[2], img.shape[3], img.shape[2],
+            #                        img.shape[3], img.shape[2]])
+            # scale1 = scale1.to(self.device)
+            # landms = landms * scale1 / self.resize
+            # landms = landms.cpu().numpy()
 
-        boxes = boxes * scale / self.resize
+            # ignore low scores
+            inds = np.where(scores > self.confidence_threshold)[0]
+            boxes = boxes[inds]
+            # landms = landms[inds]
+            scores = scores[inds]
 
-        boxes = boxes.cpu().numpy()
-        scores = conf.squeeze(0).data.cpu().numpy()[:, 1]
-        # landms = box_utils_Retina.decode_landm(landms.data.squeeze(0), prior_data, self.cfg['variance'])
-        # scale1 = torch.Tensor([img.shape[3], img.shape[2], img.shape[3], img.shape[2],
-        #                        img.shape[3], img.shape[2], img.shape[3], img.shape[2],
-        #                        img.shape[3], img.shape[2]])
-        # scale1 = scale1.to(self.device)
-        # landms = landms * scale1 / self.resize
-        # landms = landms.cpu().numpy()
+            # keep top-K before NMS
+            order = scores.argsort()[::-1][:self.top_k]
+            boxes = boxes[order]
+            # landms = landms[order]
+            # scores = scores[order]
 
-        # ignore low scores
-        inds = np.where(scores > self.confidence_threshold)[0]
-        boxes = boxes[inds]
-        # landms = landms[inds]
-        scores = scores[inds]
+            # do NMS
+            dets = np.hstack((boxes, scores[:, np.newaxis])).astype(np.float32, copy=False)
+            keep = py_cpu_nms(dets, self.nms_threshold, min_face_size = min_face_size)
+            # keep = nms(dets, args.nms_threshold,force_cpu=args.cpu)
+            dets = dets[keep, :]
+            # landms = landms[keep]
 
-        # keep top-K before NMS
-        order = scores.argsort()[::-1][:self.top_k]
-        boxes = boxes[order]
-        # landms = landms[order]
-        # scores = scores[order]
+            # keep top-K faster NMS
+            dets = dets[:self.keep_top_k, :]
+            # landms = landms[:self.keep_top_k, :]
 
-        # do NMS
-        dets = np.hstack((boxes, scores[:, np.newaxis])).astype(np.float32, copy=False)
-        keep = py_cpu_nms(dets, self.nms_threshold, min_face_size = min_face_size)
-        # keep = nms(dets, args.nms_threshold,force_cpu=args.cpu)
-        dets = dets[keep, :]
-        landms = landms[keep]
-
-        # keep top-K faster NMS
-        dets = dets[:self.keep_top_k, :]
-        # landms = landms[:self.keep_top_k, :]
-
-        # dets[:, :4] = dets[:, :4] / img_scale
-        # landms /= img_scale
-        # return dets, landms
-        return dets
+            dets[:, :4] = dets[:, :4] / img_scale
+            # landms /= img_scale
+            # return dets, landms
+            batch_dets.append(dets)
+        return batch_dets
 
 
 def run_first_stage(image, net, scale, threshold, gpu_id=0):

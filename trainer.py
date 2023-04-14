@@ -339,7 +339,7 @@ class GeneratorFull(nn.Module):
             "M": self.weights["M"] * self.losses["M"](generated_d, d),
             "A": self.weights["A"] * self.losses["A"](generated_d, neutral, s)
         }
-        return loss, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask
+        return loss, generated_d, transformed_d, neutral, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask
 
 class DiscriminatorFull(nn.Module):
     def __init__(self, discriminator: Discriminator):
