@@ -58,6 +58,12 @@ def transform_kp(canonical_kp, yaw, pitch, roll, t, scale):
     transformed_kp = torch.matmul(rot_mat.unsqueeze(1), scale*canonical_kp.unsqueeze(-1)).squeeze(-1) + t.unsqueeze(1)
     return transformed_kp, rot_mat
 
+def get_eye(yaw, pitch, roll):
+    # [N,K,3] [N,] [N,] [N,] [N,3] [N,K,3]
+    # y, x, z
+    # w, h, d
+    rot_mat = rotation_matrix_y(pitch*0.) @ rotation_matrix_x(yaw*0.) @ rotation_matrix_z(roll*0.)
+    return rot_mat
 
 def transform_kp_with_new_pose(canonical_kp, yaw, pitch, roll, t, delta, new_yaw, new_pitch, new_roll):
     # [N,K,3] [N,] [N,] [N,] [N,3] [N,K,3]

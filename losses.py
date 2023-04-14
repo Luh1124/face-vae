@@ -435,7 +435,7 @@ class LandmarkNet(nn.Module):
         return landmarks_dict
     
 class LandmarkLoss(nn.Module):
-    def __init__(self, weight={"mouth": 3.0, "eye": 3.0, "pupil": 3.0, "others": 1.0}, ckp_path="face_alignment_model.pt"):
+    def __init__(self, weight={"mouth": 3.0, "eye": 3.0, "pupil": 3.0, "others": 1.0}, ckp_path="./weights/face_alignment_model.pt"):
         super().__init__()
         self.landmarknet = LandmarkNet(ckp_path)
         self.weight = weight
@@ -450,3 +450,73 @@ class LandmarkLoss(nn.Module):
             loss += weight * self.criterion(lm_input[part], lm_target[part].detach())
         
         return loss
+
+
+from arcface import iresnet50
+from facedet.detector import RetinaFaceDetector
+from torchvision import transforms
+class ArcfaceLoss(nn.Module):
+    # Download the face recognition model arcface from insightface Go to Baidu Drive -> arcface_torch -> glint360k_cosface_r50_fp16_0.1 -> backbone.pth
+    def __init__(self, ckp_path="./weights/backbone.pth"):
+        super().__init__()
+        self.arcface = iresnet50().cuda()
+        self.arcface.eval()
+        self.arcface.load_state_dict(torch.load(ckp_path))
+        self.Normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+        self.face_detector = RetinaFaceDetector()
+
+    def check_bounding_boxes(self, bounding_boxes):
+        filter_boxes = []
+        for ix, box in enumerate(bounding_boxes):
+            box_w = box[2] - box[0]
+            box_h = box[3] - box[1]
+            max_box_len = max(box_w, box_h)
+            if box[4] > 0.5 and max_box_len > 100:
+                filter_boxes.append([box[0], box[1], box[2], box[3], box[4], box_w * box_h])
+        filter_boxes.sort(key=lambda x: x[5], reverse=True)
+        face_ratio = 0.1
+        filter_boxes = list(filter(lambda x: x[5] > face_ratio*filter_boxes[0][5], filter_boxes))
+        return filter_boxes
+    
+    def face_align(self, img):
+        bounding_boxes = self.face_detector.forward(img, min_face_size=120)
+        if len(bounding_boxes) == 0:
+            return img
+
+        bounding_boxes = self.check_bounding_boxes(bounding_boxes)
+        if len(bounding_boxes) == 0:
+            return img
+
+        return img
+
+
+    def forward(self, generated_d, n, s):
+
+        fake = self.Normalize(self.face_align(generated_d))
+        neutral = self.Normalize(self.face_align(n))
+        real = self.Normalize(self.face_align(s))
+
+        fake_z_id = self.arcface(F.interpolate(fake, [143, 143], mode="nearest")[..., 15:127, 15:127])
+        neutral_z_id = self.arcface(F.interpolate(neutral, [143, 143], mode="nearest")[..., 15:127, 15:127])
+
+        with torch.no_grad():
+            z_id = self.arcface(F.interpolate(real, [143, 143], mode="nearest")[..., 15:127, 15:127])
+        L_sim = (1 - torch.cosine_similarity(z_id, fake_z_id)).mean() + 2*(1 - torch.cosine_similarity(z_id, neutral_z_id)).mean()
+    
+        return L_sim
+    
+if __name__ == "__main__":
+    from skimage import io, img_as_float32
+    img1 = np.array(img_as_float32(io.imread('/home/luh/lh_8T/datasets/vox1/face-video-preprocessing/vox-png/test/id10306#ST2JZXcyYkE#00001.txt#000.mp4/0000000.png'))[:, :, :3]).transpose((2, 0, 1))
+    img2 = np.array(img_as_float32(io.imread('/home/luh/lh_8T/datasets/vox1/face-video-preprocessing/vox-png/test/id10306#ST2JZXcyYkE#00001.txt#000.mp4/0000111.png'))[:, :, :3]).transpose((2, 0, 1))
+    img3 = np.array(img_as_float32(io.imread('/home/luh/lh_8T/datasets/vox1/face-video-preprocessing/vox-png/test/id10306#ST2JZXcyYkE#00001.txt#000.mp4/0000058.png'))[:, :, :3]).transpose((2, 0, 1))
+
+    imgs1 = torch.cat([torch.from_numpy(img1).cuda().unsqueeze(0), torch.from_numpy(img2).cuda().unsqueeze(0), torch.from_numpy(img3).cuda().unsqueeze(0)])
+    imgs2 = torch.cat([torch.from_numpy(img2).cuda().unsqueeze(0), torch.from_numpy(img3).cuda().unsqueeze(0), torch.from_numpy(img1).cuda().unsqueeze(0)])
+    imgs3 = torch.cat([torch.from_numpy(img3).cuda().unsqueeze(0), torch.from_numpy(img1).cuda().unsqueeze(0), torch.from_numpy(img2).cuda().unsqueeze(0)])
+
+    A = ArcfaceLoss()
+    l = A(imgs1, imgs2, imgs3)
+    print(l)
+
+
