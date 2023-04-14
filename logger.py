@@ -11,8 +11,8 @@ import collections
 from distributed import master_only, master_only_print, get_rank, is_master
 
 # from models import EFE_linear as EFE
-# from models import EFE_6 as EFE
-from models import EFE_conv5 as EFE
+from models import EFE_6 as EFE
+# from models import EFE_conv5 as EFE
 
 from models import AFE, CKD, HPE_EDE, MFE, Generator, Discriminator
 from trainer import GeneratorFull, DiscriminatorFull
@@ -247,7 +247,7 @@ class Visualizer:
         transformed_kp = transformed_kp.data.cpu().numpy()[:, :, :2]
         images.append((transformed, transformed_kp))
 
-        # Driving image with keypoints_neutral
+        # Neutral image with keypoints_neutral
         kp_c = kp_c.data.cpu().numpy()[:, :, :2]
         g_c = generated_c.data.cpu().numpy()
         g_c = np.transpose(g_c, [0, 2, 3, 1])

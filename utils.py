@@ -199,3 +199,36 @@ def apply_vggface_normalization(input):
     output = (input * 255 - mean) / std
     return output
 
+
+def apply_vggface_normalization(input):
+    mean = input.new_tensor([129.186279296875, 104.76238250732422, 93.59396362304688]).view(1, 3, 1, 1)
+    std = input.new_tensor([1, 1, 1]).view(1, 3, 1, 1)
+    output = (input * 255 - mean) / std
+    return output
+
+
+def pts_1k_to_145_mouth(landmarks):
+    index_1k_to_mouth = [312, 318, 324, 330, 336, 342, 348, 354, 360, 366, 372, 378, 384, 390, 396, 402, 408, 414, 420, 
+                         426, 432, 438, 444, 450, 456, 462, 468, 473, 478, 483, 488, 493, 498, 503, 508, 513, 518, 523, 
+                         528, 533, 538, 543]
+    landmarks_mouth = landmarks[:, index_1k_to_mouth, :]
+    return landmarks_mouth
+
+def pts_1k_to_145_eye(landmarks):
+    index_1k_to_eye = [691, 695, 699, 703, 707, 711, 715, 719, 723, 727, 731, 735, 739, 743, 747, 751, 792, 796, 800, 
+                           804, 808, 812, 816, 820, 824, 828, 832, 836, 840, 844, 848, 852]
+    landmarks_eye = landmarks[:, index_1k_to_eye, :]
+    return landmarks_eye
+
+def pts_1k_to_145_others(landmarks):
+    index_1k_to_others = [0,   12,  24,  36,  48,  61,  74,  87,  100, 119, 137, 156, 175, 193, 212, 225, 238, 251, 264, 
+                              276, 288, 300, 548, 556, 564, 571, 579, 580, 581, 582, 583, 584, 585, 593, 600, 608, 616, 617, 
+                              618, 619, 620, 621, 632, 642, 653, 856, 865, 874, 883, 892, 901, 910, 919, 928, 937, 946, 955, 
+                              964, 973, 982, 991]
+    landmarks_others = landmarks[:, index_1k_to_others, :]
+    return landmarks_others
+
+def pts_1k_to_145_pupil(landmarks):
+    index_1k_to_pupil = [654, 655, 664, 673, 682, 755, 756, 765, 774, 783]
+    landmarks_pupil = landmarks[:, index_1k_to_pupil, :]
+    return landmarks_pupil

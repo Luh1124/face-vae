@@ -1023,7 +1023,81 @@ class HPE_EDE(nn.Module):
         t = torch.cat([t,zero], dim=-1)
         scale = scale.view(x.shape[0], 1, 1, 1)
         return None, None, None, t, scale
-    
+
+
+# no hidden   
+# class EFE_6(nn.Module):
+#     # Head pose estimator && expression deformation estimator
+#     # [N,3,256,256]
+#     # [N,64,64,64]
+#     # [N,64,64,64]
+#     # [N,128,32,32]
+#     # [N,128,16,16]
+#     # [N,256,8,8]
+#     # [N,16,4,4]
+#     # [N,66] [N,66] [N,66] [N,3] [N,60]
+#     # [N,] [N,] [N,] [N,3] [N,20,3]
+#     def __init__(self, use_weight_norm=False, n_filters=[64, 64, 128, 128, 256, 16], 
+#         n_blocks=[3, 3, 5, 2, 2], K=15, 
+#         use_kpc=True,
+#         weight=0.2
+#         ):
+#         super().__init__()
+#         self.pre_layers = nn.Sequential(ConvBlock2D("CNA", 3, n_filters[0], 7, 2, 3, use_weight_norm), nn.MaxPool2d(3, 2, 1))
+#         res_layers = []
+#         for i in range(len(n_filters) - 1):
+#             res_layers.extend(self._make_layer(i, n_filters[i], n_filters[i + 1], n_blocks[i], use_weight_norm))
+#         self.res_layers = nn.Sequential(*res_layers)
+#         # self.fc_yaw = nn.Linear(n_filters[-1], n_bins)
+#         # self.fc_pitch = nn.Linear(n_filters[-1], n_bins)
+#         # self.fc_roll = nn.Linear(n_filters[-1], n_bins)
+#         # self.fc_t = nn.Linear(n_filters[-1], 2)
+
+#         cat_channels = K*3 if use_kpc else 0
+        
+#         self.fc_map = nn.Sequential(nn.Linear(n_filters[-1]*4*4 + cat_channels, 512), 
+#                                     nn.BatchNorm1d(512),
+#                                     nn.ReLU(),
+#                                     nn.Linear(512, 256),
+#                                     nn.BatchNorm1d(256),
+#                                     nn.ReLU())
+                                    
+#         self.fc_delta = nn.Linear(256, K*3)
+#         self.weight = weight
+
+#     def _make_layer(self, i, in_channels, out_channels, n_block, use_weight_norm):
+#         stride = 1 if i == 0 else 2
+#         return [ResBottleneck(in_channels, out_channels, stride, use_weight_norm)] + [
+#             ResBottleneck(out_channels, out_channels, 1, use_weight_norm) for _ in range(n_block)
+#         ]
+
+#     def encode(self, x):
+#         x = self.pre_layers(x)
+#         x = self.res_layers(x)
+#         return x.flatten(1)
+
+#     def decode(self, x_en, kpc=None):
+#         if kpc is not None:
+#             x_en = torch.cat([x_en, kpc.flatten(1)], dim=1)
+#         else:
+#             x_en = x_en
+#         feature = self.fc_map(x_en)
+#         delta = F.tanh(self.fc_delta(feature))*self.weight
+#         return delta.view(delta.shape[0], -1, 3)
+
+#     def forward(self, x, x_c=None, kpc=None):
+#         x_en = self.encode(x)
+
+#         if x_c is not None:
+#             x_en_c = self.encode(x_c)
+#         else:
+#             x_en_c = None
+
+#         delta = self.decode(x_en, kpc)
+        
+#         return delta, x_en, x_en_c, None, None
+
+
 class EFE_6(nn.Module):
     # Head pose estimator && expression deformation estimator
     # [N,3,256,256]
@@ -1038,7 +1112,7 @@ class EFE_6(nn.Module):
     def __init__(self, use_weight_norm=False, n_filters=[64, 64, 128, 128, 256, 16], 
         n_blocks=[3, 3, 5, 2, 2], K=15, 
         use_kpc=True,
-        weight=0.2
+        weight=0.5
         ):
         super().__init__()
         self.pre_layers = nn.Sequential(ConvBlock2D("CNA", 3, n_filters[0], 7, 2, 3, use_weight_norm), nn.MaxPool2d(3, 2, 1))
@@ -1050,7 +1124,8 @@ class EFE_6(nn.Module):
         # self.fc_pitch = nn.Linear(n_filters[-1], n_bins)
         # self.fc_roll = nn.Linear(n_filters[-1], n_bins)
         # self.fc_t = nn.Linear(n_filters[-1], 2)
-
+        self.hidden = nn.Sequential(nn.Linear(n_filters[-1] * 4 * 4, n_filters[-1] * 4 * 4), 
+                                    nn.Tanh())
         cat_channels = K*3 if use_kpc else 0
         
         self.fc_map = nn.Sequential(nn.Linear(n_filters[-1]*4*4 + cat_channels, 512), 
@@ -1072,7 +1147,8 @@ class EFE_6(nn.Module):
     def encode(self, x):
         x = self.pre_layers(x)
         x = self.res_layers(x)
-        return x.flatten(1)
+        x = self.hidden(x.flatten(1))
+        return x
 
     def decode(self, x_en, kpc=None):
         if kpc is not None:
@@ -1080,7 +1156,9 @@ class EFE_6(nn.Module):
         else:
             x_en = x_en
         feature = self.fc_map(x_en)
-        delta = F.tanh(self.fc_delta(feature))*self.weight
+        delta = torch.tanh(self.fc_delta(feature))*self.weight
+        # delta = self.fc_delta(feature)
+
         return delta.view(delta.shape[0], -1, 3)
 
     def forward(self, x, x_c=None, kpc=None):
@@ -1094,6 +1172,7 @@ class EFE_6(nn.Module):
         delta = self.decode(x_en, kpc)
         
         return delta, x_en, x_en_c, None, None
+
 
 class MFE(nn.Module):
     # Motion field estimator
