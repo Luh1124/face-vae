@@ -451,3 +451,46 @@ class LandmarkLoss(nn.Module):
             loss += weight * self.criterion(lm_input[part], lm_target[part].detach())
         
         return loss
+    
+
+# 使用预训练的Arcface模型计算identity loss
+from arcface import iresnet18 as iresnet
+
+class ArcfaceLoss(nn.Module):
+    def __init__(self, ckp_path="Glint360K_r18.pth"):
+        super().__init__()
+        self.arcface = iresnet().cuda().eval()
+        self.arcface.load_state_dict(torch.load(ckp_path, map_location='cpu'))
+        for param in self.arcface.parameters():
+            param.requires_grad = False
+        # self.metric_fc = nn.CosineSimilarity()
+        self.metric_fc = nn.L1Loss()
+
+    
+    def gray_resize_for_identity(self, out, size=112):
+        out_gray = (out - 0.5)/(0.5)
+        out_gray = F.interpolate(out_gray, (size, size), mode='bilinear', align_corners=False)
+        return out_gray
+    
+
+    def forward(self, output, gt):
+        out_gray = self.gray_resize_for_identity(output)
+        gt_gray = self.gray_resize_for_identity(gt)
+        out_emb = self.arcface(out_gray)
+        gt_emb = self.arcface(gt_gray).detach()
+        # IdendityLoss = (1 - nn.CosineSimilarity()(out_emb, gt_emb)).mean()
+        IdendityLoss = nn.L1Loss()(out_emb, gt_emb).mean()
+        return IdendityLoss
+    
+if __name__ == "__main__":
+    from skimage import io, img_as_float32
+    s = img_as_float32(io.imread("kp_s/0000000.png"))
+    d = img_as_float32(io.imread("kp_s/0000088.png"))
+    s = np.array(s, dtype="float32").transpose((2, 0, 1))
+    d = np.array(d, dtype="float32").transpose((2, 0, 1))
+    s = torch.from_numpy(s).cuda().unsqueeze(0)
+    d = torch.from_numpy(d).cuda().unsqueeze(0)
+
+    Aloss = ArcfaceLoss()
+    loss = Aloss(s, d)
+    print(loss)
