@@ -222,7 +222,7 @@ def reenactment(hp, g_models, source_dir, ree_dir, img_size, save_dir):
         delta_s, _, _, _, _ = g_models["efe"](s, None, kp_c)
         kp_s, Rs = transform_kp(kp_c+delta_s, yaw_s, pitch_s, roll_s, t_s, scale_s)
         output_frames = []
-        for vid, video_path in tqdm(enumerate(video_paths)):
+        for vid, video_path in enumerate(video_paths):
             if os.path.isdir(video_path):
                 img_paths = sorted(glob.glob(os.path.join(video_path, "*.png")))
                 for idx, dri in tqdm(enumerate(img_paths), total=len(img_paths), desc=f"{ind}/{len(source_paths)}_{vid}/{len(video_paths)}"):            
@@ -264,13 +264,12 @@ def reenactment(hp, g_models, source_dir, ree_dir, img_size, save_dir):
                     pre_image = (255 * generated_d).astype(np.uint8)
                     output_frames.append(pre_image)
 
-            video_save_dir = f's_{source_path}-d_{video_path}'
+            video_save_dir = os.path.join(save_dir, f's_{os.path.basename(source_path)}-d_{os.path.basename(video_path)}')
             # if not os.path.exists(video_save_dir):
             #     os.makedirs(video_save_dir)
             for idx, frame in enumerate(output_frames):
                 # io.imsave(os.path.join(video_save_dir, "%s.png" % str(idx).zfill(8)), frame)
                 cv2.imwrite(video_save_dir+ f"-{idx}.png", frame[:, :, ::-1])
-        
 
     print("save path:", save_dir)    
     print("Reenactment done!")
@@ -292,7 +291,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_dir_name", default="vis_1644_mainv9finalv3-lml-dls", help="save_dir")
     parser.add_argument("--source_dir", default="/home/lh/repo3/lh/repo/datasets/vox1_reenactment/source", help="source_img_dir")
     parser.add_argument("--ree_dir", default="/home/lh/repo3/lh/repo/datasets/vox1_reenactment/driving", help="ree_img_dir")
-    parser.add_argument("--flag", default="reconstruction", 
+    parser.add_argument("--flag", default="reenactment", 
                         choices=["reconstruction", "reenactment"], 
                         help="reconstruction or reenactment")
 
@@ -304,5 +303,6 @@ if __name__ == "__main__":
         reconstruction(hp, g_models, args.img_dir, args.img_size, rec_save_dir)
     elif args.flag == "reenactment":
         ree_save_dir = os.path.join(args.save_dir, args.save_dir_name + "_" + str(args.ckp) + "_ree")
-        reenactment(hp, g_models, args.source, args.img_dir, args.img_size, ree_save_dir)
+        os.makedirs(ree_save_dir)
+        reenactment(hp, g_models, args.source_dir, args.ree_dir, args.img_size, ree_save_dir)
     
