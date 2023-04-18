@@ -30,7 +30,6 @@ def fuse_math_min_mean_neg(x):
     loss = -torch.mean(minval)
     return loss
 
-
 class _PerceptualNetwork(nn.Module):
     def __init__(self, network, layer_name_mapping, layers):
         super().__init__()
@@ -143,6 +142,8 @@ class PerceptualLoss(nn.Module):
             loss += weight * self.criterion(features_vggface_input[layer], features_vggface_target[layer].detach()) / 255
             loss += weight * self.criterion(features_vgg19_input[layer], features_vgg19_target[layer].detach())
         for i in range(self.n_scale):
+            if input.shape[2] <= 32 or input.shape[3] <= 32:
+                break
             input = F.interpolate(input, mode="bilinear", scale_factor=0.5, align_corners=False, recompute_scale_factor=True)
             target = F.interpolate(target, mode="bilinear", scale_factor=0.5, align_corners=False, recompute_scale_factor=True)
             features_vgg19_input = self.vgg19(input)

@@ -321,7 +321,8 @@ class GeneratorFull(nn.Module):
         output_d, features_d = self.discriminator(d, kp_d)
         output_gd, features_gd = self.discriminator(generated_d, kp_d)
         loss = {
-            "P": self.weights["P"] * (self.losses["P"](generated_d, d) + self.losses["P"](generated_d_64, d_64) + self.losses["P"](generated_d_128, d_128)),
+            "P": self.weights["P"] * self.losses["P"](generated_d, d),
+            "PF": self.weights["P"] * (self.losses["P"](generated_d_64, d_64) + self.losses["P"](generated_d_128, d_128)),
             "G": self.weights["G"] * self.losses["G"](output_gd, True, False),
             "F": self.weights["F"] * self.losses["F"](features_gd, features_d),
             "E": self.weights["E"] * (self.losses["E"](kp_d, reverse_kp) + self.losses["E"](kp_c, reverse_kp_c)),
