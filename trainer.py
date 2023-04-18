@@ -316,11 +316,11 @@ class GeneratorFull(nn.Module):
         
         deformation, occlusion, mask = self.mfe(fs, kp_s, kp_d, Rs, Rd)
 
-        eye_rot = get_eye(yaw_s, pitch_s, roll_s)
-        deformation_n, occlusion_n, mask_n = self.mfe(fs, kp_s, kp_c, Rs, eye_rot)
+        # eye_rot = get_eye(yaw_s, pitch_s, roll_s)
+        # deformation_n, occlusion_n, mask_n = self.mfe(fs, kp_s, kp_c, Rs, eye_rot)
 
         generated_d, generated_d_64, generated_d_128 = self.generator(fs, deformation, occlusion)
-        generated_d_n, generated_d_n_64, generated_d_n_128 = self.generator(fs, deformation_n, occlusion_n)
+        # generated_d_n, generated_d_n_64, generated_d_n_128 = self.generator(fs, deformation_n, occlusion_n)
 
         d_64 = F.interpolate(d, size=(64, 64))
         d_128 = F.interpolate(d, size=(128, 128))
@@ -340,7 +340,8 @@ class GeneratorFull(nn.Module):
             "I": self.weights["I"] * self.losses["I"]((kp_c, kp_c_d)),
             "M": self.weights["M"] * self.losses["M"](generated_d, d)
         }
-        return loss, generated_d, generated_d_n, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask
+        # return loss, generated_d, generated_d_n, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask
+        return loss, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask
 
 class DiscriminatorFull(nn.Module):
     def __init__(self, discriminator: Discriminator):

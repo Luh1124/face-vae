@@ -47,7 +47,7 @@ if __name__ == "__main__":
     parser.add_argument("--root_dir", type=str, default="/home/luh/lh_8T/datasets/vox1/face-video-preprocessing/vox-png/", help="data_path")
     parser.add_argument("--data_name", type=str, default="vox", help="data_name")
 
-    parser.add_argument("--display_server", type=str, default="130134.46.41", help="data_name")
+    parser.add_argument("--display_server", type=str, default="10.134.46.41", help="data_name")
     parser.add_argument("--display_env", type=str, default="my_voxceleb_", help="data_name")
     parser.add_argument("--display_port", type=int, default=8098, help="data_name")
     parser.add_argument("--use_visdom", type=bool, default=False, help="data_name")
