@@ -161,7 +161,8 @@ class Logger:
                 # elif idx % period == 0:
                 #     train_vae = True
                 train_vae = False
-                losses_g, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d, s_a, d_a, train_vae)
+                # losses_g, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d, s_a, d_a, train_vae)
+                losses_g, generated_d, generated_d_n, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d, s_a, d_a, train_vae)
                 # losses_g, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d)         
                 if self.epoch == 0:
                     losses_g["M"] = losses_g["M"] * 0.
@@ -186,13 +187,13 @@ class Logger:
                     losses = {}
                     losses.update(losses_g)
                     losses.update(losses_d)
-                    self.visualizer.writer_vis(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, 
+                    self.visualizer.writer_vis(x, (generated_d, generated_d_n), transformed_d, kp_c, kp_s, kp_d, transformed_kp, 
                                                occlusion, mask, 
                                                loss_dict={'index':float(idx/len(self.dataloader)),
                                                           'epoch':self.epoch,
                                                           'losess':losses})
         
-        self.log_epoch(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
+        self.log_epoch(x, (generated_d, generated_d_n), transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
         self.epoch += 1
 
 class Visualizer:
@@ -244,6 +245,7 @@ class Visualizer:
     def visualize(self, x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask):
         images = []
         s, d, s_a, d_a = x
+        generated_d, generated_d_n = generated_d
         # Source image with keypoints
         source = s.data.cpu()
         kp_source = kp_s.data.cpu().numpy()[:, :, :2]
@@ -262,15 +264,21 @@ class Visualizer:
         images.append((transformed, transformed_kp))
 
         # Driving image with keypoints_neutral
-        kp_c_driving = kp_c.data.cpu().numpy()[:, :, :2]
-        driving = d.data.cpu().numpy()
-        driving = np.transpose(driving, [0, 2, 3, 1])
-        images.append((driving, kp_c_driving))
+        # kp_c_driving = kp_c.data.cpu().numpy()[:, :, :2]
+        # driving = d.data.cpu().numpy()
+        # driving = np.transpose(driving, [0, 2, 3, 1])
+        # images.append((driving, kp_c_driving))
+        
+        # Driving image with keypoints_neutral
+        kp_c_n = kp_c.data.cpu().numpy()[:, :, :2]
+        d_n = generated_d_n.data.cpu().numpy()
+        d_n = np.transpose(d_n, [0, 2, 3, 1])
+        images.append((d_n, kp_c_n))
 
         # Driving image with keypoints
         kp_driving = kp_d.data.cpu().numpy()[:, :, :2]
-        # driving = d.data.cpu().numpy()
-        # driving = np.transpose(driving, [0, 2, 3, 1])
+        driving = d.data.cpu().numpy()
+        driving = np.transpose(driving, [0, 2, 3, 1])
         images.append((driving, kp_driving))
 
         # Result with and without keypoints
