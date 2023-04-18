@@ -7,7 +7,8 @@ from torch import nn
 # from models import EFE_linear as EFE
 # from models import EFE_conv5 as EFE
 from models import EFE_6 as EFE
-from models import AFE, CKD, HPE_EDE, MFE, Generator, Discriminator
+from models import AFE, CKD, HPE_EDE, MFE, Discriminator
+from models import Generator_FPN as Generator
 from losses import ContrastiveLoss_linear as ContrastiveLoss
 # from losses import ContrastiveLoss_conv2 as ContrastiveLoss
 from losses import (PerceptualLoss, GANLoss, FeatureMatchingLoss, EquivarianceLoss, KeypointPriorLoss, 
@@ -314,11 +315,13 @@ class GeneratorFull(nn.Module):
         reverse_kp = transform.warp_coordinates(transformed_kp[:, :, :2])
         
         deformation, occlusion, mask = self.mfe(fs, kp_s, kp_d, Rs, Rd)
-        generated_d = self.generator(fs, deformation, occlusion)
+        generated_d, generated_d_64, generated_d_128 = self.generator(fs, deformation, occlusion)
+        d_64 = F.interpolate(d, size=(64, 64))
+        d_128 = F.interpolate(d, size=(128, 128))
         output_d, features_d = self.discriminator(d, kp_d)
         output_gd, features_gd = self.discriminator(generated_d, kp_d)
         loss = {
-            "P": self.weights["P"] * self.losses["P"](generated_d, d),
+            "P": self.weights["P"] * (self.losses["P"](generated_d, d) + self.losses["P"](generated_d_64, d_64) + self.losses["P"](generated_d_128, d_128)),
             "G": self.weights["G"] * self.losses["G"](output_gd, True, False),
             "F": self.weights["F"] * self.losses["F"](features_gd, features_d),
             "E": self.weights["E"] * (self.losses["E"](kp_d, reverse_kp) + self.losses["E"](kp_c, reverse_kp_c)),

@@ -1172,6 +1172,42 @@ class Generator(nn.Module):
         fs = torch.sigmoid(fs)
         return fs
 
+class Generator_FPN(nn.Module):
+    # Generator
+    # [N,32,16,64,64]
+    # [N,512,64,64]
+    # [N,256,64,64]
+    # [N,128,128,128]
+    # [N,64,256,256]
+    # [N,3,256,256]
+    def __init__(self, use_weight_norm=True, n_res=6, up_seq=[256, 128, 64], D=16, C=32):
+        super().__init__()
+        self.in_conv = ConvBlock2D("CNA", C * D, up_seq[0], 3, 1, 1, use_weight_norm, nonlinearity_type="leakyrelu")
+        self.mid_conv = nn.Conv2d(up_seq[0], up_seq[0], 1, 1, 0)
+        self.res1 = nn.Sequential(*[ResBlock2D(up_seq[0], use_weight_norm) for _ in range(n_res)])
+        self.up1 = UpBlock2D(up_seq[0]+3, up_seq[1], use_weight_norm)
+        self.res2 = nn.Sequential(*[ResBlock2D(up_seq[1], use_weight_norm) for _ in range(2)])
+        self.up2 = UpBlock2D(up_seq[1]+3, up_seq[2], use_weight_norm)
+        self.res3 = nn.Sequential(*[ResBlock2D(up_seq[2], use_weight_norm) for _ in range(2)])
+        self.out_conv = nn.Conv2d(up_seq[-1], 3, 7, 1, 3)
+        self.conv_128 = nn.Conv2d(up_seq[-2], 3, 7, 1, 3)
+        self.conv_64 = nn.Conv2d(up_seq[-3], 3, 7, 1, 3)
+
+    def forward(self, fs, deformation, occlusion):
+        N, _, D, H, W = fs.shape
+        fs = F.grid_sample(fs, deformation, align_corners=True).view(N, -1, H, W)
+        fs = self.in_conv(fs)
+        fs = self.mid_conv(fs)
+        fs = fs * occlusion
+        fs = self.res1(fs)
+        fs_64 = torch.sigmoid(self.conv_64(fs))
+        fs = self.up1(torch.cat([fs, fs_64], dim=1))
+        fs = self.res2(fs)
+        fs_128 = torch.sigmoid(self.conv_128(fs))
+        fs = self.up2(torch.cat([fs, fs_128], dim=1))
+        fs = self.res3(fs)
+        fs = torch.sigmoid(self.out_conv(fs))
+        return fs, fs_64, fs_128
 
 class Discriminator(nn.Module):
     # Patch Discriminator
