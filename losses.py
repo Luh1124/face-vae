@@ -413,7 +413,10 @@ class IdLoss(nn.Module):
         return loss
 
 
-from utils import pts_1k_to_145_mouth, pts_1k_to_145_eye, pts_1k_to_145_pupil, pts_1k_to_145_others
+from utils import pts_1k_to_145_mouth, pts_1k_to_145_eye, \
+                    pts_1k_to_145_pupil, pts_1k_to_145_others, \
+                    pts_1k_to_145_leye, pts_1k_to_145_reye, \
+                    pts_1k_to_145_rectmouth
 
 class LandmarkNet(nn.Module):
     def __init__(self, ckp_path):
@@ -422,32 +425,157 @@ class LandmarkNet(nn.Module):
         for param in self.face_alignment_net.parameters():
             param.requires_grad = False
 
-    def forward(self, input):
+    def cal_mask(self, landmarks):
+        mask_dict = {}
+        leye = pts_1k_to_145_leye(landmarks) * 256
+        reye = pts_1k_to_145_reye(landmarks) * 256
+        rectmask = pts_1k_to_145_rectmouth(landmarks) * 256 
+
+        leye_width = (leye[:, 0, 0] - leye[:, 0, 1]) * 2.3 
+        leye_height = (leye[:, 0, 0] - leye[:, 0, 1]) * 1.4 
+        leye_center_x = torch.div(leye[:, 0, 0] + leye[:, 0, 1], 2.)
+        leye_center_y = torch.div(leye[:, 1, 2] + leye[:, 1, 3], 2.)
+
+        reye_width = (reye[:, 0, 0] - reye[:, 0, 1]) * 2.3 
+        reye_height = (reye[:, 0, 0] - reye[:, 0, 1]) * 1.4 
+        reye_center_x = torch.div(reye[:, 0, 0] + reye[:, 0, 1], 2.) 
+        reye_center_y = torch.div(reye[:, 1, 2] + reye[:, 1, 3], 2.) 
+
+        rectmask_width = (rectmask[:, 0, 0] - rectmask[:, 0, 1]) * 1.3
+        rectmask_height = (rectmask[:, 0, 0] - rectmask[:, 0, 1]) * 1
+        rectmask_center_x = torch.div(rectmask[:, 0, 0] + rectmask[:, 0, 1], 2.)
+        rectmask_center_y = torch.div(rectmask[:, 1, 2] + rectmask[:, 1, 3], 2.)
+
+
+        mask_dict["leye"] = leye_center_x - torch.div(leye_width, 2.), \
+                            leye_center_y - torch.div(leye_height, 2.), \
+                            leye_center_x + torch.div(leye_width, 2.), \
+                            leye_center_y + torch.div(leye_height, 2.)
+                              
+
+        mask_dict["reye"] = reye_center_x - torch.div(reye_width, 2.), \
+                            reye_center_y - torch.div(reye_height, 2.), \
+                            reye_center_x + torch.div(reye_width, 2.), \
+                            reye_center_y + torch.div(reye_height, 2.)
+        
+
+        
+        mask_dict["rectmouth"] = rectmask_center_x - torch.div(rectmask_width, 2.), \
+                                 rectmask_center_y - torch.div(rectmask_height, 2.), \
+                                 rectmask_center_x + torch.div(rectmask_width, 2.), \
+                                 rectmask_center_y + torch.div(rectmask_height, 2.)
+        
+        
+        return mask_dict
+
+    def forward(self, input, if_mask=False):
         bs = input.shape[0]
         landmarks = self.face_alignment_net(input)
-        landmarks = landmarks.view(bs, 1000, 2)
+        landmarks = landmarks.view(bs, 2, 1000)
         
         landmarks_dict = {}
+        rectmask_dict = {}
         landmarks_dict["mouth"] = pts_1k_to_145_mouth(landmarks)
         landmarks_dict["eye"] = pts_1k_to_145_eye(landmarks)
         landmarks_dict["pupil"] = pts_1k_to_145_pupil(landmarks)
         landmarks_dict["others"] = pts_1k_to_145_others(landmarks)
         
-        return landmarks_dict
+        if if_mask:
+            mask_dict = self.cal_mask(landmarks)
+            return landmarks_dict, mask_dict    
+        return landmarks_dict, None
     
+import imageio
 class LandmarkLoss(nn.Module):
-    def __init__(self, weight={"mouth": 3.0, "eye": 3.0, "pupil": 3.0, "others": 1.0}, ckp_path="face_alignment_model.pt"):
+    def __init__(self, landmarks_weight={"mouth": 3.0, "eye": 3.0, "pupil": 3.0, "others": 1.0}, 
+                 rectmask_weight={"leye": 5.0, "reye": 5.0, "rectmouth": 5.0},
+                 ckp_path="weights/face_alignment_model.pt"):
         super().__init__()
         self.landmarknet = LandmarkNet(ckp_path)
-        self.weight = weight
-        self.criterion = nn.MSELoss()
+        self.landmarks_weight = landmarks_weight
+        self.rectmask_weight = rectmask_weight
+        self.landmark_criterion = nn.MSELoss()
+        self.rectmask_riterion = nn.L1Loss()
+
 
     def forward(self, input, target):
-        lm_input = self.landmarknet(input)
-        lm_target = self.landmarknet(target)
+        lm_input, _ = self.landmarknet(input)
+        lm_target, mask_target = self.landmarknet(target, if_mask=True)
         
-        loss = 0
-        for part, weight in self.weight.items():
-            loss += weight * self.criterion(lm_input[part], lm_target[part].detach())
+        landmarks_loss = 0
+        for part, weight in self.landmarks_weight.items():
+            landmarks_loss += weight * self.landmark_criterion(lm_input[part], lm_target[part].detach())
         
-        return loss
+        rectmask_loss = 0
+        for part, weight in self.rectmask_weight.items():
+            h1 = torch.round(mask_target[part][3]).int()
+            w1 = torch.round(mask_target[part][2]).int()
+            h2 = torch.round(mask_target[part][1]).int()
+            w2 = torch.round(mask_target[part][0]).int()
+            mask_batch = torch.zeros_like(input, dtype=torch.float32).cuda()
+            for i in range(len(mask_batch)):
+                mask_batch[i, :, h1[i]:h2[i], w1[i]:w2[i]] = 1.0
+
+            rectmask_loss += weight * self.rectmask_riterion(input*mask_batch, 
+                                                             target*mask_batch.detach())
+                                                             
+            # imageio.imwrite("mask.png", (input[0]*mask_batch[0]).cpu().numpy().transpose((1, 2, 0)))
+
+        return landmarks_loss + rectmask_loss
+    
+
+if __name__ == "__main__":
+    from skimage import io, img_as_float32, img_as_ubyte
+    import cv2
+    s_n = img_as_float32(io.imread("kp_s/0000000.png"))
+    d_n = img_as_float32(io.imread("kp_s/0000010.png"))
+    s = np.array(s_n, dtype="float32").transpose((2, 0, 1))
+    d = np.array(d_n, dtype="float32").transpose((2, 0, 1))
+    s = torch.from_numpy(s).cuda().unsqueeze(0)
+    d = torch.from_numpy(d).cuda().unsqueeze(0)
+    s1 = torch.cat([s,d])
+    d1 = torch.cat([d,d])
+
+    Lm = LandmarkLoss()
+    loss = Lm(s1, d1)
+
+    print(loss)
+
+    # s_b = img_as_ubyte(s_n)
+    #     # 描绘关键点到图片
+    # # for (x, y) in (lm_input['mouth'][0].data.cpu().numpy()*256).T.astype(int):
+    # #     cv2.circle(s_b, (x, y), 2, (0, 255, 0), -1)
+    
+    # # for (x, y) in (lm_input['eye'][0].data.cpu().numpy()*256).T.astype(int):
+    # #     cv2.circle(s_b, (x, y), 2, (0, 255, 0), -1)
+
+    # # for (x, y) in (lm_input['pupil'][0].data.cpu().numpy()*256).T.astype(int):
+    # #     cv2.circle(s_b, (x, y), 2, (0, 255, 0), -1)
+    
+    # # for (x, y) in (lm_input['others'][0].data.cpu().numpy()*256).T.astype(int):
+    # #     cv2.circle(s_b, (x, y), 2, (0, 255, 0), -1)
+
+    # mouth_mask = cv2.rectangle(s_b, 
+    #                         (int((mask_input['leye'][2][0]).data.cpu().numpy()), int((mask_input['leye'][3][0]).data.cpu().numpy())),
+    #                         (int((mask_input['leye'][0][0]).data.cpu().numpy()), int((mask_input['leye'][1][0]).data.cpu().numpy())), 
+    #                         (255, 255, 255), -1)
+    # mouth_mask = cv2.rectangle(s_b, 
+    #                         (int((mask_input['reye'][2][0]).data.cpu().numpy()), int((mask_input['reye'][3][0]).data.cpu().numpy())),
+    #                         (int((mask_input['reye'][0][0]).data.cpu().numpy()), int((mask_input['reye'][1][0]).data.cpu().numpy())), 
+    #                         (255, 255, 255), -1)
+    # mouth_mask = cv2.rectangle(s_b, 
+    #                         (int((mask_input['rectmouth'][2][0]).data.cpu().numpy()), int((mask_input['rectmouth'][3][0]).data.cpu().numpy())),
+    #                         (int((mask_input['rectmouth'][0][0]).data.cpu().numpy()), int((mask_input['rectmouth'][1][0]).data.cpu().numpy())), 
+    #                         (255, 255, 255), -1)
+    # for (x, y) in (lm_input['mouth'][0].data.cpu().numpy()*256).T.astype(int):
+    #     cv2.circle(s_b, (x, y), 2, (0, 255, 0), -1)
+    
+    # for (x, y) in (lm_input['eye'][0].data.cpu().numpy()*256).T.astype(int):
+    #     cv2.circle(s_b, (x, y), 2, (0, 255, 0), -1)
+
+    # for (x, y) in (lm_input['pupil'][0].data.cpu().numpy()*256).T.astype(int):
+    #     cv2.circle(s_b, (x, y), 2, (0, 255, 0), -1)
+    
+    # for (x, y) in (lm_input['others'][0].data.cpu().numpy()*256).T.astype(int):
+    #     cv2.circle(s_b, (x, y), 2, (0, 255, 0), -1)
+    # cv2.imwrite("s_bbb.png", s_b[:,:,::-1])
