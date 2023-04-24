@@ -1,6 +1,7 @@
 import argparse
 from models import EFE_6 as EFE
-from models import AFE, CKD, HPE_EDE, MFE, Generator
+from models import AFE, CKD, HPE_EDE, MFE
+from models import Generator_FPN as Generator
 import numpy as np
 import torch
 from torch import nn
@@ -261,21 +262,21 @@ def demo(args):
             # deformation, occlusion, mask = g_models["mfe"](fs, kp_s, kp_d8, Rs, Rd)
             # generated_d = g_models["generator"](fs, deformation, occlusion)
             deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d1, Rs, Rd3)
-            generated_d1 = g_models["generator"](fs, deformation, occlusion)
+            generated_d1, _, _ = g_models["generator"](fs, deformation, occlusion)
             deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d2, Rs, Rd3)
-            generated_d2 = g_models["generator"](fs, deformation, occlusion)
+            generated_d2, _, _ = g_models["generator"](fs, deformation, occlusion)
             deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d3, Rs, Rd3)
-            generated_d3 = g_models["generator"](fs, deformation, occlusion)	
+            generated_d3, _, _ = g_models["generator"](fs, deformation, occlusion)	
             deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d4, Rs, Rd4)
-            generated_d4 = g_models["generator"](fs, deformation, occlusion)
+            generated_d4, _, _ = g_models["generator"](fs, deformation, occlusion)
             deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d5, Rs, Rd5)
-            generated_d5 = g_models["generator"](fs, deformation, occlusion)
+            generated_d5, _, _ = g_models["generator"](fs, deformation, occlusion)
             deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d6, Rs, Rd6)
-            generated_d6 = g_models["generator"](fs, deformation, occlusion)
+            generated_d6, _, _ = g_models["generator"](fs, deformation, occlusion)
             deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d7, Rs, Rd7)
-            generated_d7 = g_models["generator"](fs, deformation, occlusion)
+            generated_d7, _, _ = g_models["generator"](fs, deformation, occlusion)
             deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d8, Rs, Rd8)
-            generated_d8 = g_models["generator"](fs, deformation, occlusion)
+            generated_d8, _, _ = g_models["generator"](fs, deformation, occlusion)
 
             s_np = s.data.cpu()
             kp_s_np = kp_s.data.cpu().numpy()[:, :, :2]
@@ -329,7 +330,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--ckp_dir", type=str, default="ckp_1644_mainv9finalv3-lml-dls-newgenmodel-mask", help="Checkpoint dir")
     parser.add_argument("--output", type=str, default="output.gif", help="Output video")
-    parser.add_argument("--ckp", type=int, default=140, help="Checkpoint epoch")
+    parser.add_argument("--ckp", type=int, default=141, help="Checkpoint epoch")
     parser.add_argument("--source", type=str, default="./kp_s copy", help="Source image, f for face frontalization, r for reconstruction")
     parser.add_argument("--driving", type=str, default='./kp_s copy', help="Driving dir")
     parser.add_argument("--num_frames", type=int, default=90, help="Number of frames")
