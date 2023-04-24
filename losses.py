@@ -463,6 +463,8 @@ class ArcfaceLoss(nn.Module):
         self.arcface = iresnet50().cuda()
         self.arcface.eval()
         self.arcface.load_state_dict(torch.load(ckp_path))
+        for param in self.arcface.parameters():
+            param.requires_grad = False
         self.Normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         if if_align:
             self.face_detector = RetinaFaceDetector()

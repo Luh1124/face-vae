@@ -17,6 +17,8 @@ class RetinaFaceDetector(object):
         model = RetinaFace(cfg=self.cfg, phase='test')
         model = self.load_model(model, './weights/Resnet50_Final.pth', True)
         model.eval()
+        for param in model.parameters():
+            param.requires_grad = False
         self.net = model.cuda()
         self.resize = 1
         self.confidence_threshold = 0.02

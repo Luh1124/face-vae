@@ -164,6 +164,7 @@ class Logger:
                 # losses_g, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d)         
                 if self.epoch == 0:
                     losses_g["M"] = losses_g["M"] * 0.
+                    losses_g["A"] = losses_g["A"] * 0.
                 loss_g = sum(losses_g.values())
                 loss_g.backward()
                 for optimizer in self.g_optimizers.values():
