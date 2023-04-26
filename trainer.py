@@ -241,7 +241,7 @@ class GeneratorFull(nn.Module):
         self.generator = generator
         self.discriminator = discriminator
         self.weights = {
-            "P": 10,
+            "P": 20,
             "G": 1,
             "F": 10,
             "E": 20,
@@ -249,10 +249,10 @@ class GeneratorFull(nn.Module):
             # "H": 20,
             "D": 5,
             # "D": 10,
-            "C": 100,
+            "C": 50,
             # "K": 0, # 0.2
             # "R": 0 # 10
-            "I": 2,
+            "I": 4,
             "M": 1
         }
         self.losses = {
