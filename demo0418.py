@@ -2,7 +2,8 @@
 
 import argparse
 from models import EFE_6 as EFE
-from models import AFE, CKD, HPE_EDE, MFE, Generator
+from models import AFE, CKD, HPE_EDE, MFE
+from models import Generator_FPN as Generator
 import numpy as np
 import torch
 from torch import nn
@@ -174,7 +175,7 @@ def reconstruction(hp, g_models, img_dir, img_size, save_dir):
             delta_d, _, _, _, _ = g_models["efe"](img, None, kp_c)
             kp_d, Rd = transform_kp(kp_c+delta_d, yaw_d, pitch_d, roll_d, t_d, scale_d)
             deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d, Rs, Rd)
-            generated_d = g_models["generator"](fs, deformation, occlusion)
+            generated_d, _, _ = g_models["generator"](fs, deformation, occlusion)
             
             L1.append(torch.mean(torch.abs(img - generated_d)).item())
             
@@ -186,7 +187,7 @@ def reconstruction(hp, g_models, img_dir, img_size, save_dir):
 
             MSE.append(mean_squared_error(pre_image, dri_image))
             PSNR.append(peak_signal_noise_ratio(pre_image, dri_image))
-            SSIM.append(structural_similarity(pre_image, dri_image, multichannel=True))
+            SSIM.append(structural_similarity(pre_image, dri_image, multichannel=True, channel_axis=2))
 
         if not os.path.exists(video_save_dir):
             os.makedirs(video_save_dir)
@@ -206,7 +207,54 @@ def reconstruction(hp, g_models, img_dir, img_size, save_dir):
 
 
 @torch.no_grad()
-def reenactment(hp, g_models, source_dir, ree_dir, img_size, save_dir):
+def reenactment(hp, g_models, source_dir, img_dir, img_size, save_dir):
+    source_paths = sorted(glob.glob(os.path.join(source_dir, "*")))
+    video_paths = sorted(glob.glob(os.path.join(img_dir, "*")))
+    for ind, video_path in enumerate(video_paths):
+        video_save_dir = os.path.join(save_dir, os.path.basename(video_path))
+        img_paths = sorted(glob.glob(os.path.join(video_path, "*.png")))
+        s = img_as_float32(io.imread(source_paths[ind]))[:, :, :3]
+        s = np.array(s, dtype="float32").transpose((2, 0, 1))
+        s = torch.from_numpy(s).unsqueeze(0).cuda()
+        s = F.interpolate(s, size=(img_size, img_size), mode="bilinear", align_corners=False)
+        fs = g_models["afe"](s)
+        kp_c = g_models["ckd"](s)
+        _, _, _, t_s, scale_s = g_models["hpe_ede"](s)
+        yaw_s, pitch_s, roll_s = hp(F.interpolate(apply_imagenet_normalization(s), size=(224, 224)))
+        delta_s, _, _, _, _ = g_models["efe"](s, None, kp_c)
+        kp_s, Rs = transform_kp(kp_c+delta_s, yaw_s, pitch_s, roll_s, t_s, scale_s)
+        output_frames = []
+        for idx, dri in tqdm(enumerate(img_paths), total=len(img_paths), desc=f"{ind}/{len(video_paths)}:"):
+            dri_image = io.imread(dri)[:, :, :3]
+            # dri_image = cv2.cvtColor(cv2.imread(dri)[:, :, :3], cv2.COLOR_BGR2RGB)
+            img = img_as_float32(dri_image)
+            img = np.array(img, dtype="float32").transpose((2, 0, 1))
+            img = torch.from_numpy(img).unsqueeze(0).cuda()
+            img = F.interpolate(img, size=(img_size, img_size), mode="bilinear", align_corners=False)
+            _, _, _, t_d, scale_d = g_models["hpe_ede"](img)
+            # kp_c_d = g_models["ckd"](img)
+            yaw_d, pitch_d, roll_d = hp(F.interpolate(apply_imagenet_normalization(img), size=(224, 224)))
+            delta_d, _, _, _, _ = g_models["efe"](img, None, kp_c)
+            kp_d, Rd = transform_kp(kp_c+delta_d, yaw_d, pitch_d, roll_d, t_d, scale_d)
+            deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d, Rs, Rd)
+            generated_d, _, _ = g_models["generator"](fs, deformation, occlusion)
+            
+            generated_d = generated_d.squeeze(0).data.cpu().numpy()
+            generated_d = np.transpose(generated_d, [1, 2, 0])
+            generated_d = generated_d.clip(0, 1)
+            pre_image = (255 * generated_d).astype(np.uint8)
+            output_frames.append(pre_image)
+
+        if not os.path.exists(video_save_dir):
+            os.makedirs(video_save_dir)
+        for idx, frame in enumerate(output_frames):
+            # io.imsave(os.path.join(video_save_dir, "%s.png" % str(idx).zfill(8)), frame)
+            cv2.imwrite(os.path.join(video_save_dir, "%s.png" % str(idx).zfill(8)), frame[:, :, ::-1])
+    
+    print("Reenactment done!")
+
+@torch.no_grad()
+def reenactment_multi(hp, g_models, source_dir, ree_dir, img_size, save_dir):
     video_paths = sorted(glob.glob(os.path.join(ree_dir, "*")))
     source_paths = sorted(glob.glob(os.path.join(source_dir, "*.png")))
 
@@ -238,7 +286,7 @@ def reenactment(hp, g_models, source_dir, ree_dir, img_size, save_dir):
                     delta_d, _, _, _, _ = g_models["efe"](img, None, kp_c_d)
                     kp_d, Rd = transform_kp(kp_c+delta_d, yaw_d, pitch_d, roll_d, t_d, scale_d)
                     deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d, Rs, Rd)
-                    generated_d = g_models["generator"](fs, deformation, occlusion)            
+                    generated_d, _, _ = g_models["generator"](fs, deformation, occlusion)            
                     generated_d = generated_d.squeeze(0).data.cpu().numpy()
                     generated_d = np.transpose(generated_d, [1, 2, 0])
                     generated_d = generated_d.clip(0, 1)
@@ -257,7 +305,7 @@ def reenactment(hp, g_models, source_dir, ree_dir, img_size, save_dir):
                     delta_d, _, _, _, _ = g_models["efe"](img, None, kp_c_d)
                     kp_d, Rd = transform_kp(kp_c+delta_d, yaw_d, pitch_d, roll_d, t_d, scale_d)
                     deformation, occlusion, _ = g_models["mfe"](fs, kp_s, kp_d, Rs, Rd)
-                    generated_d = g_models["generator"](fs, deformation, occlusion)            
+                    generated_d, _, _ = g_models["generator"](fs, deformation, occlusion)            
                     generated_d = generated_d.squeeze(0).data.cpu().numpy()
                     generated_d = np.transpose(generated_d, [1, 2, 0])
                     generated_d = generated_d.clip(0, 1)
@@ -276,22 +324,26 @@ def reenactment(hp, g_models, source_dir, ree_dir, img_size, save_dir):
 
 
 if __name__ == "__main__":
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "3"
     if sys.version_info[0] < 3:
         raise Exception("You must use Python 3 or higher. Recommended version is Python 3.7")
 
     parser = argparse.ArgumentParser("face-vae")
     parser.add_argument("--hp_pickle_path", default="hopenet_robust_alpha1.pkl", help="hp_pickle_path")
-    parser.add_argument("--ckp_dir", default="ckp_1644_mainv9finalv3-lml-dls", help="checkpoint_dir")
-    parser.add_argument("--ckp", default=140, help="checkpoint_epoch")
-    parser.add_argument("--img_dir", default="/home/lh/repo3/lh/repo/datasets/face-video-preprocessing/vox-png/test", help="img_dir")
+    parser.add_argument("--ckp_dir", default="ckp_1644_mainv9finalv3-lml-dls-newgenmodel-mask-largeW", help="checkpoint_dir")
+    parser.add_argument("--ckp", default=181, help="checkpoint_epoch")
+    # parser.add_argument("--img_dir", default="/home/lh/repo3/lh/repo/datasets/face-video-preprocessing/vox-png/test", help="img_dir")
     parser.add_argument("--img_size", default=256, help="img_size")
     parser.add_argument("--batch_size", default=1, help="batch_size")
-    parser.add_argument("--save_dir", default="/home/lh/repo3/lh/repo/lh_code/metric_nerfface", help="save_dir")
-    parser.add_argument("--save_dir_name", default="vis_1644_mainv9finalv3-lml-dls", help="save_dir")
-    parser.add_argument("--source_dir", default="/home/lh/repo3/lh/repo/datasets/vox1_reenactment/source", help="source_img_dir")
-    parser.add_argument("--ree_dir", default="/home/lh/repo3/lh/repo/datasets/vox1_reenactment/driving", help="ree_img_dir")
-    parser.add_argument("--flag", default="reenactment", 
+    # parser.add_argument("--save_dir", default="/data1/datasets/vox1/metric/tiaotu0424", help="save_dir")
+    parser.add_argument("--save_dir", default="demo/out", help="save_dir")
+
+    parser.add_argument("--save_dir_name", default="newgen-mask-lw", help="save_dir")
+    parser.add_argument("--source_dir", default="/data1/datasets/vox1/metric/tiaotu0424/s2", help="source_img_dir")
+    # parser.add_argument("--ree_dir", default="/data1/datasets/vox1/metric/tiaotu0424/d2-png", help="ree_img_dir")
+    parser.add_argument("--ree_dir", default="/data/repo/code/lh/2.faceanimation/face-vae/demo/dri", help="ree_img_dir")
+
+    parser.add_argument("--flag", default="reconstruction", 
                         choices=["reconstruction", "reenactment"], 
                         help="reconstruction or reenactment")
 
@@ -299,10 +351,10 @@ if __name__ == "__main__":
     hp, g_models = init_model(args)
 
     if args.flag == "reconstruction":
-        rec_save_dir = os.path.join(args.save_dir, args.save_dir_name + "_" + str(args.ckp))
-        reconstruction(hp, g_models, args.img_dir, args.img_size, rec_save_dir)
+        rec_save_dir = os.path.join(args.save_dir, 'rec', args.save_dir_name + "_" + str(args.ckp))
+        reconstruction(hp, g_models, args.ree_dir, args.img_size, rec_save_dir)
     elif args.flag == "reenactment":
-        ree_save_dir = os.path.join(args.save_dir, args.save_dir_name + "_" + str(args.ckp) + "_ree")
+        ree_save_dir = os.path.join(args.save_dir, 'ree', args.save_dir_name + "_" + str(args.ckp) + "_ree")
         os.makedirs(ree_save_dir)
         reenactment(hp, g_models, args.source_dir, args.ree_dir, args.img_size, ree_save_dir)
     
