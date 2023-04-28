@@ -324,26 +324,26 @@ def reenactment_multi(hp, g_models, source_dir, ree_dir, img_size, save_dir):
 
 
 if __name__ == "__main__":
-    os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
     if sys.version_info[0] < 3:
         raise Exception("You must use Python 3 or higher. Recommended version is Python 3.7")
 
     parser = argparse.ArgumentParser("face-vae")
     parser.add_argument("--hp_pickle_path", default="hopenet_robust_alpha1.pkl", help="hp_pickle_path")
-    parser.add_argument("--ckp_dir", default="ckp_1644_mainv9finalv3-lml-dls-newgenmodel-mask-slr-sc-lp-ld", help="checkpoint_dir")
-    parser.add_argument("--ckp", default=214, help="checkpoint_epoch")
+    parser.add_argument("--ckp_dir", default="ckp_1644_mainv9finalv3-lml-dls-newgenmodel-mask-sslr-c100-lp-ld", help="checkpoint_dir")
+    parser.add_argument("--ckp", default=221, help="checkpoint_epoch")
     # parser.add_argument("--img_dir", default="/home/lh/repo3/lh/repo/datasets/face-video-preprocessing/vox-png/test", help="img_dir")
     parser.add_argument("--img_size", default=256, help="img_size")
     parser.add_argument("--batch_size", default=1, help="batch_size")
     parser.add_argument("--save_dir", default="/data1/datasets/vox1/metric/tiaotu0424", help="save_dir")
     # parser.add_argument("--save_dir", default="demo/out", help="save_dir")
 
-    parser.add_argument("--save_dir_name", default="newgen-mask-lw", help="save_dir")
+    parser.add_argument("--save_dir_name", default="newgen-mask-sslr-c100", help="save_dir")
     parser.add_argument("--source_dir", default="/data1/datasets/vox1/metric/tiaotu0424/s2", help="source_img_dir")
     parser.add_argument("--ree_dir", default="/data1/datasets/vox1/metric/tiaotu0424/d2-png", help="ree_img_dir")
     # parser.add_argument("--ree_dir", default="/data/repo/code/lh/2.faceanimation/face-vae/demo/dri", help="ree_img_dir")
 
-    parser.add_argument("--flag", default="reenactment", 
+    parser.add_argument("--flag", default="reconstruction", 
                         choices=["reconstruction", "reenactment"], 
                         help="reconstruction or reenactment")
 
