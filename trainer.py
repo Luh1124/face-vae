@@ -249,10 +249,10 @@ class GeneratorFull(nn.Module):
             # "H": 20,
             "D": 5,
             # "D": 10,
-            "C": 100,
+            "C": 10,
             # "K": 0, # 0.2
             # "R": 0 # 10
-            "I": 2,
+            "I": 5,
             "M": 1
         }
         self.losses = {

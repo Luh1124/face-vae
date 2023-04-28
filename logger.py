@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
+from torch.optim.lr_scheduler import MultiStepLR
 import imageio
 
 import os
@@ -31,6 +32,7 @@ class Logger:
         vis_dir,
         dataloader,
         lr,
+        epoch_milestone,
         checkpoint_freq=1,
         visualizer_params={"kp_size": 5, "draw_border": True, "colormap": "gist_rainbow", "writer_use": False, "writer_name":'running', "use_visdom": False, "visdom_params":None},
         zfill_num=8,
@@ -63,8 +65,12 @@ class Logger:
             self.d_models[name] = torch.nn.parallel.DistributedDataParallel(torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).cuda(), device_ids=[get_rank()])
             # self.d_models[name] = torch.nn.parallel.DistributedDataParallel(model.cuda(), device_ids=[get_rank()])
             
-        self.g_optimizers = {name: torch.optim.Adam(self.g_models[name].parameters(), lr=lr, betas=(0.5, 0.999)) for name in self.g_models.keys()}
+        self.g_optimizers = {name: torch.optim.Adam([{'params': self.g_models[name].parameters(), "initial_lr": lr}], lr=lr, betas=(0.5, 0.999)) for name in self.g_models.keys()}
         self.d_optimizers = {name: torch.optim.Adam(self.d_models[name].parameters(), lr=lr, betas=(0.5, 0.999)) for name in self.d_models.keys()}
+        
+        self.g_schedulers = {name: MultiStepLR(self.g_optimizers[name], epoch_milestone, gamma=0.1, last_epoch=self.epoch) for name in self.d_models.keys()}
+
+        
         self.g_full = GeneratorFull(**self.g_models, **self.d_models)
         self.d_full = DiscriminatorFull(**self.d_models)
         self.g_loss_names, self.d_loss_names = None, None
@@ -164,7 +170,7 @@ class Logger:
                 losses_g, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d, s_a, d_a, train_vae)
                 # losses_g, generated_d, generated_d_n, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d, s_a, d_a, train_vae)
                 # losses_g, generated_d, transformed_d, kp_s, kp_d, transformed_kp, occlusion, mask = self.g_full(s, d)         
-                if self.epoch == 0:
+                if self.epoch == 5:
                     losses_g["M"] = losses_g["M"] * 0.
                 loss_g = sum(losses_g.values())
                 loss_g.backward()
@@ -199,7 +205,8 @@ class Logger:
                                                           'losess':losses})
         # self.log_epoch(x, (generated_d, generated_d_n), transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
         self.log_epoch(x, generated_d, transformed_d, kp_c, kp_s, kp_d, transformed_kp, occlusion, mask)
-        
+        for scheduler in self.g_schedulers.values():
+            scheduler.step()
         self.epoch += 1
 
 class Visualizer:

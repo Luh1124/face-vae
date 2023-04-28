@@ -19,7 +19,7 @@ def main(proc, args):
     trainloader = data.DataLoader(trainset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, sampler=trainsampler, drop_last=True)
     # visdom_params = {"server":args.display_server,"port":args.display_port,"env":args.display_env}
     visualizer_params={"kp_size": 5, "draw_border": True, "colormap": "gist_rainbow", "writer_use": False, "writer_name":'running', "use_visdom": False, "visdom_params":{"server":args.display_server,"port":args.display_port,"env":args.display_env}}
-    logger = Logger(args.ckp_dir, args.vis_dir, trainloader, args.lr, log_file_name=args.log_file, visualizer_params=visualizer_params)
+    logger = Logger(args.ckp_dir, args.vis_dir, trainloader, args.lr, epoch_milestone=args.epoch_milestone, log_file_name=args.log_file, visualizer_params=visualizer_params)
     if args.ckp > 0:
         logger.load_cpk(args.ckp)
     for i in range(args.num_epochs):
@@ -36,9 +36,10 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", default=2, type=int, help="Batch size per GPU")
     parser.add_argument("--benchmark", type=str2bool, default=True, help="Turn on CUDNN benchmarking")
     parser.add_argument("--gpu_ids", default=[0, 1], type=eval, help="IDs of GPUs to use")
-    parser.add_argument("--lr", default=0.00005, type=float, help="Learning rate")
-    parser.add_argument("--num_epochs", default=150, type=int, help="Number of epochs to train")
-    parser.add_argument("--num_workers", default=6, type=int, help="Number of data loader threads")
+    parser.add_argument("--lr", default=2e-4, type=float, help="Learning rate")
+    parser.add_argument("--epoch_milestone", default=[60, 100], type=list, help="Learning rate")
+    parser.add_argument("--num_epochs", default=200, type=int, help="Number of epochs to train")
+    parser.add_argument("--num_workers", default=8, type=int, help="Number of data loader threads")
     parser.add_argument("--ckp_dir", type=str, default="ckp_1644_", help="Checkpoint dir")
     parser.add_argument("--vis_dir", type=str, default="vis_1644_", help="Visualization dir")
     parser.add_argument("--ckp", type=int, default=0, help="Checkpoint epoch")
