@@ -68,7 +68,7 @@ class Logger:
         self.g_optimizers = {name: torch.optim.Adam([{'params': self.g_models[name].parameters(), "initial_lr": lr}], lr=lr, betas=(0.5, 0.999)) for name in self.g_models.keys()}
         self.d_optimizers = {name: torch.optim.Adam(self.d_models[name].parameters(), lr=lr, betas=(0.5, 0.999)) for name in self.d_models.keys()}
         
-        self.g_schedulers = {name: MultiStepLR(self.g_optimizers[name], epoch_milestone, gamma=0.1, last_epoch=self.epoch) for name in self.d_models.keys()}
+        self.g_schedulers = {name: MultiStepLR(self.g_optimizers[name], epoch_milestone, gamma=0.1, last_epoch=self.epoch) for name in self.g_models.keys()}
 
         
         self.g_full = GeneratorFull(**self.g_models, **self.d_models)
