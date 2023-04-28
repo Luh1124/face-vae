@@ -13,4 +13,4 @@
 # CUDA_LAUNCH_BLOCKING=1 python train.py --batch_size=3 --gpu_ids=0,1,2,3,4,5,6,7 --ext=mainv9finalv3-lml --data_name='vox' --root_dir='../dataset/vox1/vox-png' --display_server=127.0.0.1 --display_port=8098
 # python train.py --batch_size=6 --gpu_ids=0,1,2,3 --ext=mainv9finalv3-lml-dls-newgenmodel --ckp=124 --root_dir='/home/lh/repo/datasets/vox-png' 
 # python train.py --batch_size=6 --gpu_ids=0,1,2,3 --ext=mainv9finalv3-lml-dls-newgenmodel-mask-largeW --ckp=145 --root_dir='/home/lh/repo/datasets/vox-png' 
-python train.py --batch_size=6 --gpu_ids=0,1,2,3 --ext=mainv9finalv3-lml-dls-newgenmodel-mask-slr-sc-lp-ld --ckp=188 --root_dir='/home/lh/repo/datasets/vox-png' 
+python train.py --batch_size=6 --gpu_ids=0,1,2,3 --ext=mainv9finalv3-lml-dls-newgenmodel-mask-sslr-c100-lp-ld --ckp=214 --root_dir='/home/lh/repo/datasets/vox-png' 
