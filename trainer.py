@@ -253,7 +253,7 @@ class GeneratorFull(nn.Module):
             # "K": 0, # 0.2
             # "R": 0 # 10
             "I": 4,
-            "M": 1
+            "M": 2
         }
         self.losses = {
             "P": PerceptualLoss(),
