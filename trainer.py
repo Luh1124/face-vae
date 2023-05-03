@@ -241,19 +241,19 @@ class GeneratorFull(nn.Module):
         self.generator = generator
         self.discriminator = discriminator
         self.weights = {
-            "P": 20,
+            "P": 10,
             "G": 1,
             "F": 10,
             "E": 20,
             "L": 10,
-            # "H": 20,
-            "D": 5,
+            "H": 20,
+            "D": 4,
             # "D": 10,
-            "C": 100,
+            "C": 10,
             # "K": 0, # 0.2
             # "R": 0 # 10
             "I": 4,
-            "M": 2
+            "M": 1
         }
         self.losses = {
             "P": PerceptualLoss(),
@@ -261,7 +261,7 @@ class GeneratorFull(nn.Module):
             "F": FeatureMatchingLoss(),
             "E": EquivarianceLoss(),
             "L": KeypointPriorLoss(),
-            # "H": HeadPoseLoss(),
+            "H": HeadPoseLoss(),
             "D": DeformationPriorLoss(),
             "C": torch.nn.SyncBatchNorm.convert_sync_batchnorm(ContrastiveLoss(mode="direction")).cuda(),
             # "K": KLDivergenceLoss(),
@@ -321,7 +321,10 @@ class GeneratorFull(nn.Module):
 
         generated_d, generated_d_64, generated_d_128 = self.generator(fs, deformation, occlusion)
         # generated_d_n, generated_d_n_64, generated_d_n_128 = self.generator(fs, deformation_n, occlusion_n)
-
+        with torch.no_grad():
+            self.pretrained.eval()
+            g_yaw, g_pitch, g_roll = self.pretrained(F.interpolate(apply_imagenet_normalization(generated_d), size=(224, 224)))
+        
         d_64 = F.interpolate(d, size=(64, 64))
         d_128 = F.interpolate(d, size=(128, 128))
         output_d, features_d = self.discriminator(d, kp_d)
@@ -333,7 +336,7 @@ class GeneratorFull(nn.Module):
             "F": self.weights["F"] * self.losses["F"](features_gd, features_d),
             "E": self.weights["E"] * (self.losses["E"](kp_d, reverse_kp) + self.losses["E"](kp_c, reverse_kp_c)),
             "L": self.weights["L"] * (self.losses["L"](kp_d)+self.losses["L"](kp_c)),
-            # "H": self.weights["H"] * self.losses["H"](yaw, pitch, roll, real_yaw, real_pitch, real_roll),
+            "H": self.weights["H"] * self.losses["H"](g_yaw, g_pitch, g_roll, yaw_d, pitch_d, roll_d),
             # "D": self.weights["D"] * self.losses["D"](delta_d),
             "D": self.weights["D"] * self.losses["D"](delta_d),
             "C": torch.Tensor([0.0]).cuda() if x_c_d is None else self.weights["C"] * self.losses["C"](x_c_d, x_a_c_d),

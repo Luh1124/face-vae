@@ -487,8 +487,8 @@ class LandmarkNet(nn.Module):
     
 import imageio
 class LandmarkLoss(nn.Module):
-    def __init__(self, landmarks_weight={"mouth": 256., "eye": 256., "pupil": 256., "others": 256.}, 
-                 rectmask_weight={"leye": 200., "reye": 200., "rectmouth": 200.},
+    def __init__(self, landmarks_weight={"mouth": 256., "eye": 256., "pupil": 256., "others": 64.}, 
+                 rectmask_weight={"leye": 20., "reye": 20., "rectmouth": 20.},
                 #  ckp_path="weights/face_alignment_model.pt"):
                  ckp_path="face_alignment_model.pt"):
         
@@ -523,7 +523,7 @@ class LandmarkLoss(nn.Module):
                                                              
             # imageio.imwrite("mask.png", (input[0]*mask_batch[0]).cpu().numpy().transpose((1, 2, 0)))
         # print(landmarks_loss, rectmask_loss)
-        return landmarks_loss*50 + rectmask_loss
+        return landmarks_loss*2 + rectmask_loss
     
 
 if __name__ == "__main__":
